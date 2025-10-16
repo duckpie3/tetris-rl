@@ -19,18 +19,6 @@ WHITE = (255, 255, 255)
 
 FPS = 8
 
-class ShiftWrapper(gym.Wrapper):
-    """Allow to use Discrete() action spaces with start!=0"""
-
-    def __init__(self, env: gym.Env) -> None:
-        super().__init__(env)
-        assert isinstance(env.action_space, gym.spaces.Discrete)
-        self.action_space = gym.spaces.Discrete(env.action_space.n, start=0)
-
-    def step(self, action: int):
-        return self.env.step(action + self.env.action_space.start)
-
-
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
 
