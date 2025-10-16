@@ -40,13 +40,13 @@ class TetrisEnv(gym.Env):
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Dict(
             spaces={
-                "type": spaces.Discrete(7, start=1),
-                "rotation": spaces.Discrete(4, start=0),
-                "color": spaces.Discrete(4, start=1),
-                "x": spaces.Discrete(COLS, start=-1),
-                "y": spaces.Discrete(ROWS, start=0),
-                "next": spaces.Discrete(7, start=1),
-                "board": spaces.Box(low=0, high=4, shape=(ROWS, COLS)),
+                "piece_type": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
+                "rotation":   spaces.Box(low=0, high=3, shape=(1,), dtype=np.float32),
+                "color":      spaces.Box(low=1, high=4, shape=(1,), dtype=np.float32),
+                "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
+                "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
+                "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
+                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS, COLS), dtype=np.float32),
             }
         )
         if self.render_mode == "human":
@@ -70,13 +70,13 @@ class TetrisEnv(gym.Env):
         type_to_num = {"I": 1, "Z": 2, "S": 3, "J": 4, "L": 5, "T": 6, "O": 7}
 
         obs = {
-            "type": type_to_num[self.tetris.figure.type],
-            "rotation": self.tetris.figure.rotation,
-            "color": self.tetris.figure.color,
-            "x": self.tetris.figure.x,
-            "y": self.tetris.figure.y,
-            "next": type_to_num[self.tetris.next.type],
-            "board": np.array(self.tetris.board, dtype=np.float32),
+            "piece_type": np.array([type_to_num[self.tetris.figure.type]], dtype=np.float32),
+            "rotation":   np.array([self.tetris.figure.rotation], dtype=np.float32),
+            "color":      np.array([self.tetris.figure.color], dtype=np.float32),
+            "x":          np.array([self.tetris.figure.x], dtype=np.float32),
+            "y":          np.array([self.tetris.figure.y], dtype=np.float32),
+            "next_piece": np.array([type_to_num[self.tetris.next.type]], dtype=np.float32),
+            "board":      np.array(self.tetris.board, dtype=np.float32),
         }
         return obs
 
