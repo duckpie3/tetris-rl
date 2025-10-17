@@ -80,8 +80,6 @@ class TetrisEnv(gym.Env):
     def step(self, action):
         self.tetris.go_down()
 
-        prev_score = self.tetris.score
-
         if action == LEFT:
             self.tetris.go_side(-1)
         elif action == RIGHT:
@@ -96,7 +94,8 @@ class TetrisEnv(gym.Env):
 
         if self.tetris.gameover:
             reward -= 1
-        reward += self.tetris.score - prev_score
+
+        reward += self.tetris.score
 
         obs = self._get_observation()
 
