@@ -20,7 +20,7 @@ WHITE = (255, 255, 255)
 FPS = 8
 
 class TetrisEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
+    metadata = {"render_modes": ["human"], "render_fps": FPS}
 
     def __init__(self, render_mode: str | None = None):
         super(TetrisEnv, self).__init__()
