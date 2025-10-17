@@ -67,13 +67,13 @@ class Tetris:
         self.gameover = False
         self.new_figure()
 
-    def draw_grid(self):
-        for i in range(self.rows + 1):
-            pygame.draw.line(win, WHITE, (0, CELLSIZE * i), (WIDTH, CELLSIZE * i))
-        for j in range(self.cols):
-            pygame.draw.line(
-                win, WHITE, (CELLSIZE * j, 0), (CELLSIZE * j, HEIGHT - 120)
-            )
+    # def draw_grid(self):
+    #     for i in range(self.rows + 1):
+    #         pygame.draw.line(win, WHITE, (0, CELLSIZE * i), (WIDTH, CELLSIZE * i))
+    #     for j in range(self.cols):
+    #         pygame.draw.line(
+    #             win, WHITE, (CELLSIZE * j, 0), (CELLSIZE * j, HEIGHT - 120)
+    #         )
 
     def new_figure(self):
         if not self.next:
