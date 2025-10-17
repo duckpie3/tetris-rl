@@ -1,7 +1,7 @@
 # Tetris RL
 
-A minimal Tetris clone built with Pygame together with a Gymnasium-compatible
-environment for training reinforcement learning agents using Stable Baselines3.
+A minimal Gymnasium-compatible Tetris environment
+for training reinforcement learning agents using Stable Baselines3.
 The base Tetris implementation is adapted from
 https://github.com/itspyguru/Python-Games.
 
