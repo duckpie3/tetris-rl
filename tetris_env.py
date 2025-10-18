@@ -54,7 +54,9 @@ class TetrisEnv(gym.Env):
             pygame.quit()
 
     def _get_observation(self):
-
+        if self.tetris.next is None:
+            raise ValueError
+        
         type_to_num = {"I": 1, "Z": 2, "S": 3, "J": 4, "L": 5, "T": 6, "O": 7}
 
         obs = {
@@ -78,8 +80,6 @@ class TetrisEnv(gym.Env):
         return obs, info
 
     def step(self, action):
-        self.tetris.go_down()
-
         if action == LEFT:
             self.tetris.go_side(-1)
         elif action == RIGHT:
@@ -88,9 +88,13 @@ class TetrisEnv(gym.Env):
             self.tetris.rotate()
         elif action == NONE:
             pass
+        self.tetris.go_down()
+        
+        terminated = self.tetris.gameover
+        truncated = False
 
         reward = 0.0
-        terminated = truncated = self.tetris.gameover
+
 
         if self.tetris.gameover:
             reward -= 1
@@ -116,15 +120,16 @@ class TetrisEnv(gym.Env):
                             self.win, WHITE, (y * CELLSIZE, x * CELLSIZE, CELLSIZE, CELLSIZE), 1
                         )
 
-        if tetris.figure:
-            for i in range(4):
-                for j in range(4):
-                    if i * 4 + j in tetris.figure.image():
-                        img = self.Assets[tetris.figure.color]
-                        x = CELLSIZE * (tetris.figure.x + j)
-                        y = CELLSIZE * (tetris.figure.y + i)
-                        self.win.blit(img, (x, y))
-                        pygame.draw.rect(self.win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1)
+            if tetris.figure:
+                for i in range(4):
+                    for j in range(4):
+                        if i * 4 + j in tetris.figure.image():
+                            img = self.Assets[tetris.figure.color]
+                            x = CELLSIZE * (tetris.figure.x + j)
+                            y = CELLSIZE * (tetris.figure.y + i)
+                            self.win.blit(img, (x, y))
+                            pygame.draw.rect(self.win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1)
+
             if tetris.gameover:
                 rect = pygame.Rect((50, 140, WIDTH - 100, HEIGHT - 350))
                 pygame.draw.rect(self.win, BLACK, rect)
