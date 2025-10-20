@@ -34,7 +34,7 @@ class TetrisEnv(gym.Env):
                 "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
                 "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
-                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS, COLS), dtype=np.float32),
+                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS * COLS,), dtype=np.float32),
             }
         )
         if self.render_mode == "human":
@@ -66,7 +66,7 @@ class TetrisEnv(gym.Env):
             "x":          np.array([self.tetris.figure.x], dtype=np.float32),
             "y":          np.array([self.tetris.figure.y], dtype=np.float32),
             "next_piece": np.array([type_to_num[self.tetris.next.type]], dtype=np.float32),
-            "board":      np.array(self.tetris.board, dtype=np.float32),
+            "board":      np.array(self.tetris.board, dtype=np.float32).flatten(),
         }
         return obs
 
@@ -88,19 +88,19 @@ class TetrisEnv(gym.Env):
             self.tetris.rotate()
         elif action == NONE:
             pass
-        self.tetris.go_down()
+        lines_removed, quality_delta = self.tetris.go_down()
         
         terminated = self.tetris.gameover
         truncated = False
 
         reward = 0.0
-
-
         if self.tetris.gameover:
             reward -= 1
+        
+        reward += (quality_delta ** 3) * 10
+        reward += lines_removed ** 2
 
-        reward += self.tetris.score
-
+        # print(f'{quality_delta = }, {lines_removed}')
         obs = self._get_observation()
 
         info = {}
