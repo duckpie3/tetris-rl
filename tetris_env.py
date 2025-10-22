@@ -30,7 +30,6 @@ class TetrisEnv(gym.Env):
             spaces={
                 "piece_type": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
                 "rotation":   spaces.Box(low=0, high=3, shape=(1,), dtype=np.float32),
-                "color":      spaces.Box(low=1, high=4, shape=(1,), dtype=np.float32),
                 "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
                 "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
@@ -62,7 +61,6 @@ class TetrisEnv(gym.Env):
         obs = {
             "piece_type": np.array([type_to_num[self.tetris.figure.type]], dtype=np.float32),
             "rotation":   np.array([self.tetris.figure.rotation], dtype=np.float32),
-            "color":      np.array([self.tetris.figure.color], dtype=np.float32),
             "x":          np.array([self.tetris.figure.x], dtype=np.float32),
             "y":          np.array([self.tetris.figure.y], dtype=np.float32),
             "next_piece": np.array([type_to_num[self.tetris.next.type]], dtype=np.float32),
