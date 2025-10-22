@@ -34,7 +34,7 @@ class TetrisEnv(gym.Env):
                 "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
                 "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
-                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS, COLS), dtype=np.float32),
+                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS * COLS,), dtype=np.float32),
             }
         )
         if self.render_mode == "human":
@@ -66,7 +66,7 @@ class TetrisEnv(gym.Env):
             "x":          np.array([self.tetris.figure.x], dtype=np.float32),
             "y":          np.array([self.tetris.figure.y], dtype=np.float32),
             "next_piece": np.array([type_to_num[self.tetris.next.type]], dtype=np.float32),
-            "board":      np.array(self.tetris.board, dtype=np.float32),
+            "board":      np.array(self.tetris.board, dtype=np.float32).flatten(),
         }
         return obs
 
