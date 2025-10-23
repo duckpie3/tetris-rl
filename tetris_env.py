@@ -8,7 +8,7 @@ SCREEN = WIDTH, HEIGHT = 300, 500
 CELLSIZE = 20
 ROWS = (HEIGHT - 120) // CELLSIZE
 COLS = WIDTH // CELLSIZE
-LEFT, RIGHT, ROTATE, NONE = 0, 1, 2, 3
+LEFT, RIGHT, ROTATE, DROP, NONE = 0, 1, 2, 3, 4
 
 # COLORS *********************************************************************
 
@@ -17,7 +17,7 @@ BLUE = (31, 25, 76)
 RED = (252, 91, 122)
 WHITE = (255, 255, 255)
 
-FPS = 8
+FPS = 48
 
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
@@ -25,7 +25,7 @@ class TetrisEnv(gym.Env):
     def __init__(self, render_mode: str | None = None):
         super(TetrisEnv, self).__init__()
         self.render_mode = render_mode
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(5)
         self.observation_space = spaces.Dict(
             spaces={
                 "piece_type": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
@@ -72,32 +72,77 @@ class TetrisEnv(gym.Env):
         super().reset(seed=seed, options=options)
         self.tetris = Tetris(ROWS, COLS)
 
+        self.bumpiness = 0
+        self.height = 0
+        self.hole_count = 0
+        self.score = 0
+
+        self.fall_interval = 24
+        self.frame = 0
+        self.next_gravity_frame = self.fall_interval
+        self.level = self.tetris.level
+
         obs = self._get_observation()
 
         info = {}
         return obs, info
 
     def step(self, action):
+        
+        bumpiness_p = self.bumpiness
+        hole_count_p = self.hole_count
+        score_p = self.score
+
+        level_p = self.level
+
+        step_penalty = 0.01
+        freezed = False
+        reward = 0.0
+
         if action == LEFT:
             self.tetris.go_side(-1)
         elif action == RIGHT:
             self.tetris.go_side(1)
         elif action == ROTATE:
             self.tetris.rotate()
+        elif action == DROP:
+            self.tetris.go_space()
+            freezed = True
+            reward += 0.1
         elif action == NONE:
-            pass
-        self.tetris.go_down()
+            step_penalty = 0
         
+        if not freezed and self.frame >= self.next_gravity_frame:
+            freezed = self.tetris.go_down()
+            self.next_gravity_frame += self.fall_interval
+
+        if freezed:
+            self.level = self.tetris.level
+            self.bumpiness = self.tetris.get_bumpiness()
+            self.height = self.tetris.max_height
+            self.hole_count = self.tetris.get_hole_count()
+            self.score = self.tetris.score
+            
+            bumpiness_delta = self.bumpiness - bumpiness_p
+            hole_count_delta = self.hole_count - hole_count_p
+            score_delta = self.score - score_p
+            height_penalty = 8 if self.height > 12 else 0
+
+            reward -= bumpiness_delta
+            reward -= hole_count_delta * 2
+            reward += score_delta**2
+            reward -= height_penalty
+            reward -= step_penalty
+
         terminated = self.tetris.gameover
         truncated = False
-
-        reward = 0.0
-
-
         if self.tetris.gameover:
-            reward -= 1
+            reward -= 15
+        
+        self.frame += 1
 
-        reward += self.tetris.score
+        if self.level - level_p >= 1 and self.level <= 5:
+            self.fall_interval -= 4*(self.level-1)
 
         obs = self._get_observation()
 
