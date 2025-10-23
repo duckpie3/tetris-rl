@@ -65,16 +65,9 @@ class Tetris:
         self.board = [[0 for j in range(cols)] for i in range(rows)]
         self.next = None
         self.gameover = False
+        self.max_height = 0
         self.new_figure()
-
-    # def draw_grid(self):
-    #     for i in range(self.rows + 1):
-    #         pygame.draw.line(win, WHITE, (0, CELLSIZE * i), (WIDTH, CELLSIZE * i))
-    #     for j in range(self.cols):
-    #         pygame.draw.line(
-    #             win, WHITE, (CELLSIZE * j, 0), (CELLSIZE * j, HEIGHT - 120)
-    #         )
-
+        
     def new_figure(self):
         if not self.next:
             self.next = Tetramino(5, 0)
@@ -114,14 +107,18 @@ class Tetris:
             self.remove_line()
 
     def freeze(self):
+        freezed = False;
         for i in range(4):
             for j in range(4):
                 if i * 4 + j in self.figure.image():
                     self.board[i + self.figure.y][j + self.figure.x] = self.figure.color
+                    freezed = True
         self.remove_line()
         self.new_figure()
         if self.intersects():
             self.gameover = True
+        self.max_height = self.get_max_height()
+        return freezed
 
     def go_space(self):
         while not self.intersects():
@@ -134,6 +131,8 @@ class Tetris:
         if self.intersects():
             self.figure.y -= 1
             self.freeze()
+            return True
+        return False
 
     def go_side(self, dx):
         self.figure.x += dx
@@ -146,6 +145,37 @@ class Tetris:
         if self.intersects():
             self.figure.rotation = rotation
 
+    def get_hole_count(self):
+        if self.max_height <= 1:
+            return 0
+        count = 0
+        start = self.rows - self.max_height + 1
+        for r in range(start, self.rows):
+            for c in range(self.cols):
+                if self.board[r][c] == 0 and self.board[r-1][c] != 0:
+                    count += 1
+        return count
+
+    def get_bumpiness(self):
+        coef = 0
+        prev_height = self.get_column_height(0)
+        for i in range(1, self.cols):
+            height = self.get_column_height(i)
+            coef += abs(height - prev_height)
+            prev_height = height
+        return coef
+
+    def get_max_height(self):
+        for r in reversed(range(self.rows)):
+            if all(c == 0 for c in self.board[r]):
+                return self.rows - r - 1
+        return self.rows-1
+
+    def get_column_height(self, col):
+            for r in range(self.rows):
+                if self.board[r][col] != 0:
+                    return self.rows - r
+            return 0
 
 def main():
     pygame.init()
