@@ -148,31 +148,18 @@ class Tetris:
         if self.intersects():
             self.figure.rotation = rotation
 
-    def get_hole_count(self):
-        rows = self.rows
-        cols = self.cols
-        visited = [[False]*cols for _ in range(rows)]
-        dirs4 = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        def bfs(sr, sc):
-            q = deque([(sr, sc)])
-            visited[sr][sc] = True
-            while q:
-                r, c = q.popleft()
-                for dr, dc in dirs4:
-                    nr, nc = r + dr, c + dc
-                    if (0 <= nr < rows and 0 <= nc < cols and
-                        not visited[nr][nc] and self.board[nr][nc] == 0):
-                        visited[nr][nc] = True
-                        q.append((nr, nc))
+    def get_blocked_cells(self):
         count = 0
-        for r in range(rows):
-            # if all(cell == 0 for cell in self.board[r]):
-            #     break
-            for c in range(cols):
-                if self.board[r][c] == 0 and not visited[r][c]:
-                    bfs(r, c)
-                    count += 1
-        return count-1
+        for col in range(self.cols):
+            seen_block = False
+            for row in range(self.rows):
+                if not seen_block: # Find highest block in col
+                    if self.board[row][col] != 0:
+                        seen_block = True
+                else: # Count blocked cells
+                    if self.board[row][col] == 0:
+                        count += 1
+        return count
 
     def get_bumpiness(self):
         coef = 0

@@ -131,7 +131,7 @@ class TetrisEnv(gym.Env):
             self.level = self.tetris.level
             self.bumpiness = self.tetris.get_bumpiness()
             self.height = self.tetris.max_height
-            self.hole_count = self.tetris.get_hole_count()
+            self.hole_count = self.tetris.get_blocked_cells()
             self.score = self.tetris.score
 
             line_bonus = [0.0, 1.0, 3.0, 5.0, 8.0][self.score - score_p]
