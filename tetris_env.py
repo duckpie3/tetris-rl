@@ -114,7 +114,7 @@ class TetrisEnv(gym.Env):
         elif action == ROTATE:
             self.tetris.rotate()
         elif action == DROP:
-            self.tetris.go_space()
+            self.tetris.hard_drop()
             freezed = True
         elif action == NONE:
             pass

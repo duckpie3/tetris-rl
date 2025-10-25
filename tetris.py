@@ -123,7 +123,7 @@ class Tetris:
         self.max_height = self.get_max_height()
         return freezed
 
-    def go_space(self):
+    def hard_drop(self):
         while not self.intersects():
             self.figure.y += 1
         self.figure.y -= 1
@@ -251,7 +251,7 @@ def main():
                         move_down = True
 
                     if event.key == pygame.K_SPACE:
-                        tetris.go_space()
+                        tetris.hard_drop()
 
                 if event.key == pygame.K_r:
                     tetris.__init__(ROWS, COLS)

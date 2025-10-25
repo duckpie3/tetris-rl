@@ -25,6 +25,6 @@ else:
 
 TIMESTEPS = 10_000
 start_iteration = latest_timestep // TIMESTEPS
-for i in range(start_iteration, start_iteration + 25):
-    model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, progress_bar=True, tb_log_name="PPO")
+for i in range(start_iteration, start_iteration + 100):
+    model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name="PPO")
     model.save(str(models_dir / f"{TIMESTEPS * (i + 1)}"))
