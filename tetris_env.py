@@ -76,7 +76,7 @@ class TetrisEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed, options=options)
-        self.tetris = Tetris(ROWS, COLS)
+        self.tetris = Tetris(ROWS, COLS, seed)
 
         self.bumpiness = 0
         self.height = 0
@@ -89,7 +89,7 @@ class TetrisEnv(gym.Env):
         self.next_gravity_frame = self.fall_interval
         self.level = self.tetris.level
 
-        self.steps_until_truncated = 40
+        self.steps_until_truncated = 30
         self.steps_without_scoring = 0
         obs = self._get_observation()
 
@@ -141,9 +141,9 @@ class TetrisEnv(gym.Env):
             else:
                 self.steps_without_scoring += 1
             reward += line_bonus
-            reward += -0.8 * (self.bumpiness - bumpiness_p)
+            reward += -0.4 * (self.bumpiness - bumpiness_p)
             reward += -4.0 * (self.hole_count - hole_count_p)
-            reward += -0.2 * (self.height - height_p)
+            reward += -0.5 * (self.height - height_p)
 
             reward = float(np.clip(reward, -20.0, 20.0))
 
@@ -219,10 +219,12 @@ class TetrisEnv(gym.Env):
             self.win.blit(levelimg, (250 - levelimg.get_width() // 2, HEIGHT - 30))
 
             pygame.draw.rect(self.win, BLUE, (0, 0, WIDTH, HEIGHT - 120), 2)
+            pygame.event.pump()
             self.clock.tick(FPS)
             pygame.display.update()
 
     def close(self):
         if self.render_mode == "human":
-            pygame.quit
+            pygame.quit()
+            pygame.display.quit()
         return super().close()
