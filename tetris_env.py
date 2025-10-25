@@ -33,7 +33,8 @@ class TetrisEnv(gym.Env):
                 "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
                 "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
-                "board":      spaces.Box(low=0.0, high=4.0, shape=(ROWS * COLS,), dtype=np.float32),
+                "level":      spaces.Box(low=1, high=np.inf, shape=(1,), dtype=np.float32),
+                "board":      spaces.Box(low=0.0, high=1.0, shape=(ROWS * COLS,), dtype=np.float32),
             }
         )
         if self.render_mode == "human":
@@ -58,13 +59,15 @@ class TetrisEnv(gym.Env):
         
         type_to_num = {"I": 1, "Z": 2, "S": 3, "J": 4, "L": 5, "T": 6, "O": 7}
 
+        board = np.array(self.tetris.board)
         obs = {
             "piece_type": np.array([type_to_num[self.tetris.figure.type]], dtype=np.float32),
             "rotation":   np.array([self.tetris.figure.rotation], dtype=np.float32),
             "x":          np.array([self.tetris.figure.x], dtype=np.float32),
             "y":          np.array([self.tetris.figure.y], dtype=np.float32),
             "next_piece": np.array([type_to_num[self.tetris.next.type]], dtype=np.float32),
-            "board":      np.array(self.tetris.board, dtype=np.float32).flatten(),
+            "level":      np.array([self.tetris.level], dtype=np.float32),
+            "board":      (board != 0).astype(np.float32).flatten(),
         }
         return obs
 
@@ -77,11 +80,14 @@ class TetrisEnv(gym.Env):
         self.hole_count = 0
         self.score = 0
 
-        self.fall_interval = 24
+        self.base_fall_interval = 24
+        self.fall_interval = self.base_fall_interval
         self.frame = 0
         self.next_gravity_frame = self.fall_interval
         self.level = self.tetris.level
 
+        self.steps_until_truncated = 40
+        self.steps_without_scoring = 0
         obs = self._get_observation()
 
         info = {}
@@ -92,12 +98,12 @@ class TetrisEnv(gym.Env):
         bumpiness_p = self.bumpiness
         hole_count_p = self.hole_count
         score_p = self.score
-
+        height_p = self.height
         level_p = self.level
 
-        step_penalty = 0.01
         freezed = False
         reward = 0.0
+        reward -= 0.001
 
         if action == LEFT:
             self.tetris.go_side(-1)
@@ -108,9 +114,8 @@ class TetrisEnv(gym.Env):
         elif action == DROP:
             self.tetris.go_space()
             freezed = True
-            reward += 0.1
         elif action == NONE:
-            step_penalty = 0
+            pass
         
         if not freezed and self.frame >= self.next_gravity_frame:
             freezed = self.tetris.go_down()
@@ -123,26 +128,28 @@ class TetrisEnv(gym.Env):
             self.hole_count = self.tetris.get_hole_count()
             self.score = self.tetris.score
             
-            bumpiness_delta = self.bumpiness - bumpiness_p
-            hole_count_delta = self.hole_count - hole_count_p
-            score_delta = self.score - score_p
-            height_penalty = 8 if self.height > 12 else 0
+            line_bonus = [0.0, 1.0, 3.0, 5.0, 8.0][self.score - score_p]
+            if line_bonus != 0.0:
+                self.steps_without_scoring = 0
+            else:
+                self.steps_without_scoring += 1
+            reward += line_bonus
+            reward += -0.5 * (self.bumpiness - bumpiness_p)
+            reward += -4.0 * (self.hole_count - hole_count_p)
+            reward += -0.2 * (self.height - height_p)
 
-            reward -= bumpiness_delta
-            reward -= hole_count_delta * 2
-            reward += score_delta**2
-            reward -= height_penalty
-            reward -= step_penalty
-
+            reward = float(np.clip(reward, -20.0, 20.0))
+        
         terminated = self.tetris.gameover
-        truncated = False
+        truncated = self.steps_without_scoring >= self.steps_until_truncated
+            
         if self.tetris.gameover:
-            reward -= 15
+            reward -= 20.0
         
         self.frame += 1
 
-        if self.level - level_p >= 1 and self.level <= 5:
-            self.fall_interval -= 4*(self.level-1)
+        if self.level != level_p and self.level <= 5:
+            self.fall_interval = self.base_fall_interval - 4*(self.level-1)
 
         obs = self._get_observation()
 
