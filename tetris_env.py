@@ -8,7 +8,7 @@ SCREEN = WIDTH, HEIGHT = 300, 500
 CELLSIZE = 20
 ROWS = (HEIGHT - 120) // CELLSIZE
 COLS = WIDTH // CELLSIZE
-LEFT, RIGHT, ROTATE, DROP, NONE = 0, 1, 2, 3, 4
+LEFT, RIGHT, DOWN, ROTATE, DROP, NONE = 0, 1, 2, 3, 4, 5
 
 # COLORS *********************************************************************
 
@@ -23,16 +23,18 @@ FPS = 48
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, base_fall_interval = 24):
         super(TetrisEnv, self).__init__()
         self.render_mode = render_mode
-        self.action_space = spaces.Discrete(5)
+        self.base_fall_interval = base_fall_interval
+        self.action_space = spaces.Discrete(6)
         self.observation_space = spaces.Dict(
             spaces={
                 "piece_type": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
                 "rotation": spaces.Box(low=0, high=3, shape=(1,), dtype=np.float32),
                 "x": spaces.Box(low=-1, high=COLS - 1, shape=(1,), dtype=np.float32),
                 "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
+                "ticks_to_gravity": spaces.Box(low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
                 "level": spaces.Box(low=1, high=1000, shape=(1,), dtype=np.float32),
                 "board": spaces.Box(
@@ -66,6 +68,7 @@ class TetrisEnv(gym.Env):
             "rotation": np.array([self.tetris.figure.rotation], dtype=np.float32),
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
+            "ticks_to_gravity": np.array([self.fall_interval - self.frame], dtype=np.float32),
             "next_piece": np.array(
                 [type_to_num[self.tetris.next.type]], dtype=np.float32
             ),
@@ -83,7 +86,6 @@ class TetrisEnv(gym.Env):
         self.hole_count = 0
         self.score = 0
 
-        self.base_fall_interval = 24
         self.fall_interval = self.base_fall_interval
         self.frame = 0
         self.next_gravity_frame = self.fall_interval
@@ -111,6 +113,8 @@ class TetrisEnv(gym.Env):
             self.tetris.go_side(-1)
         elif action == RIGHT:
             self.tetris.go_side(1)
+        elif action == DOWN:
+            self.tetris.go_down()
         elif action == ROTATE:
             self.tetris.rotate()
         elif action == DROP:
@@ -140,13 +144,13 @@ class TetrisEnv(gym.Env):
             reward += -4.0 * (self.hole_count - hole_count_p)
             reward += -0.5 * (self.height - height_p)
 
-            reward = float(np.clip(reward, -20.0, 20.0))
-
         terminated = self.tetris.gameover
         truncated = self.steps_without_scoring >= self.steps_until_truncated
 
         if self.tetris.gameover:
             reward -= 20.0
+
+        reward = float(np.clip(reward, -20.0, 20.0))
 
         self.frame += 1
 
