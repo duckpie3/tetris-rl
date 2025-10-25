@@ -89,7 +89,7 @@ class TetrisEnv(gym.Env):
         self.next_gravity_frame = self.fall_interval
         self.level = self.tetris.level
 
-        self.steps_until_truncated = 30
+        self.steps_until_truncated = 20
         self.steps_without_scoring = 0
         obs = self._get_observation()
 
@@ -106,21 +106,16 @@ class TetrisEnv(gym.Env):
 
         freezed = False
         reward = 0.0
-        reward -= 0.001
 
         if action == LEFT:
             self.tetris.go_side(-1)
-            reward -= 0.01
         elif action == RIGHT:
             self.tetris.go_side(1)
-            reward -= 0.01
         elif action == ROTATE:
             self.tetris.rotate()
-            reward -= 0.01
         elif action == DROP:
             self.tetris.go_space()
             freezed = True
-            reward += 0.01
         elif action == NONE:
             pass
 
