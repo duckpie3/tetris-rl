@@ -30,7 +30,7 @@ class TetrisEnv(gym.Env):
         self.action_space = spaces.Discrete(6)
         self.observation_space = spaces.Dict(
             spaces={
-                "piece_type": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
+                "piece_type": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
                 "rotation": spaces.Box(low=0, high=3, shape=(1,), dtype=np.float32),
                 "x": spaces.Box(low=-1, high=COLS - 1, shape=(1,), dtype=np.float32),
                 "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
@@ -58,13 +58,13 @@ class TetrisEnv(gym.Env):
         if self.tetris.next is None:
             raise ValueError
 
-        type_to_num = {"I": 1, "Z": 2, "S": 3, "J": 4, "L": 5, "T": 6, "O": 7}
+        type_to_num = {"I": 0, "Z": 1, "S": 2, "J": 3, "L": 4, "T": 5, "O": 6}
+        type_one_hot_enc = np.zeros(7, dtype=np.float32)
+        type_one_hot_enc[type_to_num[self.tetris.figure.type]] = 1
 
         board = np.array(self.tetris.board)
         obs = {
-            "piece_type": np.array(
-                [type_to_num[self.tetris.figure.type]], dtype=np.float32
-            ),
+            "piece_type": type_one_hot_enc,
             "rotation": np.array([self.tetris.figure.rotation], dtype=np.float32),
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
@@ -141,7 +141,7 @@ class TetrisEnv(gym.Env):
                 self.steps_without_scoring += 1
             reward += line_bonus
             reward += -0.4 * (self.bumpiness - bumpiness_p)
-            reward += -4.0 * (self.hole_count - hole_count_p)
+            reward += -2.0 * (self.hole_count - hole_count_p)
             reward += -0.5 * (self.height - height_p)
 
         terminated = self.tetris.gameover
