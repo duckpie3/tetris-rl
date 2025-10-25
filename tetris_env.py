@@ -33,8 +33,8 @@ class TetrisEnv(gym.Env):
                 "x":          spaces.Box(low=-1, high=COLS-1, shape=(1,), dtype=np.float32),
                 "y":          spaces.Box(low=0, high=ROWS-1, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=1, high=7, shape=(1,), dtype=np.float32),
-                "level":      spaces.Box(low=1, high=np.inf, shape=(1,), dtype=np.float32),
-                "board":      spaces.Box(low=0.0, high=1.0, shape=(ROWS * COLS,), dtype=np.float32),
+                "level":      spaces.Box(low=1, high=1000, shape=(1,), dtype=np.float32),
+                "board":      spaces.Box(low=0, high=1, shape=(ROWS * COLS,), dtype=np.float32),
             }
         )
         if self.render_mode == "human":
@@ -48,10 +48,6 @@ class TetrisEnv(gym.Env):
             self.Assets = {1: self.img1, 2: self.img2, 3: self.img3, 4: self.img4}
             self.font = pygame.font.Font("Fonts/Alternity-8w7J.ttf", 50)
             self.font2 = pygame.font.SysFont("cursive", 25)
-
-    def __del__(self):
-        if self.render_mode == "human":
-            pygame.quit()
 
     def _get_observation(self):
         if self.tetris.next is None:
@@ -107,13 +103,17 @@ class TetrisEnv(gym.Env):
 
         if action == LEFT:
             self.tetris.go_side(-1)
+            reward -= 0.01
         elif action == RIGHT:
             self.tetris.go_side(1)
+            reward -= 0.01
         elif action == ROTATE:
             self.tetris.rotate()
+            reward -= 0.01
         elif action == DROP:
             self.tetris.go_space()
             freezed = True
+            reward += 0.01
         elif action == NONE:
             pass
         
@@ -134,7 +134,7 @@ class TetrisEnv(gym.Env):
             else:
                 self.steps_without_scoring += 1
             reward += line_bonus
-            reward += -0.5 * (self.bumpiness - bumpiness_p)
+            reward += -0.8 * (self.bumpiness - bumpiness_p)
             reward += -4.0 * (self.hole_count - hole_count_p)
             reward += -0.2 * (self.height - height_p)
 
@@ -209,3 +209,9 @@ class TetrisEnv(gym.Env):
             pygame.draw.rect(self.win, BLUE, (0, 0, WIDTH, HEIGHT - 120), 2)
             self.clock.tick(FPS)
             pygame.display.update()
+        
+        
+    def close(self):
+        if self.render_mode == "human":
+            pygame.quit
+        return super().close()
