@@ -58,7 +58,7 @@ class Tetramino:
 
 
 class Tetris:
-    def __init__(self, rows, cols):
+    def __init__(self, rows, cols, seed = None):
         self.rows = rows
         self.cols = cols
         self.score = 0
@@ -67,6 +67,8 @@ class Tetris:
         self.next = None
         self.gameover = False
         self.max_height = 0
+        if seed is not None:
+            random.seed(seed)
         self.new_figure()
         
     def new_figure(self):
