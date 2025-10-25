@@ -68,7 +68,7 @@ class TetrisEnv(gym.Env):
             "rotation": np.array([self.tetris.figure.rotation], dtype=np.float32),
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
-            "ticks_to_gravity": np.array([self.fall_interval - self.frame], dtype=np.float32),
+            "ticks_to_gravity": np.array([np.clip(self.next_gravity_frame - self.frame, 0, self.base_fall_interval)], dtype=np.float32),
             "next_piece": np.array(
                 [type_to_num[self.tetris.next.type]], dtype=np.float32
             ),
@@ -91,7 +91,7 @@ class TetrisEnv(gym.Env):
         self.next_gravity_frame = self.fall_interval
         self.level = self.tetris.level
 
-        self.steps_until_truncated = 20
+        self.steps_until_truncated = 35
         self.steps_without_scoring = 0
         obs = self._get_observation()
 
@@ -148,7 +148,7 @@ class TetrisEnv(gym.Env):
         truncated = self.steps_without_scoring >= self.steps_until_truncated
 
         if self.tetris.gameover:
-            reward -= 20.0
+            reward -= 5
 
         reward = float(np.clip(reward, -20.0, 20.0))
 
