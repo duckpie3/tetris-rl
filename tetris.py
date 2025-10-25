@@ -1,5 +1,6 @@
 import pygame
 import random
+from collections import deque
 
 SCREEN = WIDTH, HEIGHT = 300, 500
 
@@ -146,15 +147,30 @@ class Tetris:
             self.figure.rotation = rotation
 
     def get_hole_count(self):
-        if self.max_height <= 1:
-            return 0
+        rows = self.rows
+        cols = self.cols
+        visited = [[False]*cols for _ in range(rows)]
+        dirs4 = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        def bfs(sr, sc):
+            q = deque([(sr, sc)])
+            visited[sr][sc] = True
+            while q:
+                r, c = q.popleft()
+                for dr, dc in dirs4:
+                    nr, nc = r + dr, c + dc
+                    if (0 <= nr < rows and 0 <= nc < cols and
+                        not visited[nr][nc] and self.board[nr][nc] == 0):
+                        visited[nr][nc] = True
+                        q.append((nr, nc))
         count = 0
-        start = self.rows - self.max_height + 1
-        for r in range(start, self.rows):
-            for c in range(self.cols):
-                if self.board[r][c] == 0 and self.board[r-1][c] != 0:
+        for r in range(rows):
+            # if all(cell == 0 for cell in self.board[r]):
+            #     break
+            for c in range(cols):
+                if self.board[r][c] == 0 and not visited[r][c]:
+                    bfs(r, c)
                     count += 1
-        return count
+        return count-1
 
     def get_bumpiness(self):
         coef = 0
