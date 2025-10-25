@@ -122,6 +122,37 @@ class Tetris:
             self.gameover = True
         self.max_height = self.get_max_height()
         return freezed
+    
+    def project_landing(self):
+        if not getattr(self, "figure", None):
+            return []
+
+        def collides_at(x, y, image):
+            for i in range(4):
+                for j in range(4):
+                    if i * 4 + j in image:
+                        board_y = y + i
+                        board_x = x + j
+                        if (
+                            board_y > self.rows - 1
+                            or board_x > self.cols - 1
+                            or board_x < 0
+                            or self.board[board_y][board_x] > 0
+                        ):
+                            return True
+            return False
+
+        image = self.figure.image()
+        ghost_y = self.figure.y
+        while not collides_at(self.figure.x, ghost_y + 1, image):
+            ghost_y += 1
+
+        projection = []
+        for i in range(4):
+            for j in range(4):
+                if i * 4 + j in image:
+                    projection.append((ghost_y + i, self.figure.x + j))
+        return projection
 
     def hard_drop(self):
         while not self.intersects():
@@ -273,6 +304,11 @@ def main():
                         y = CELLSIZE * (tetris.figure.y + i)
                         win.blit(img, (x, y))
                         pygame.draw.rect(win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1)
+
+        ghost_cells = tetris.project_landing()
+        for row, col in ghost_cells:
+            ghost_rect = pygame.Rect(col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE)
+            pygame.draw.rect(win, WHITE, ghost_rect, 1)
 
         # GAMEOVER ***************************************************************
 

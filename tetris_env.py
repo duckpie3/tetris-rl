@@ -145,8 +145,8 @@ class TetrisEnv(gym.Env):
             else:
                 self.steps_without_scoring += 1
             reward += line_bonus
-            reward += -0.4 * (self.bumpiness - bumpiness_p)
-            reward += -2.0 * (self.hole_count - hole_count_p)
+            reward += -0.2 * (self.bumpiness - bumpiness_p)
+            reward += -1.0 * (self.hole_count - hole_count_p)
             reward += -0.5 * (self.height - height_p)
 
         terminated = self.tetris.gameover
@@ -195,6 +195,11 @@ class TetrisEnv(gym.Env):
                             pygame.draw.rect(
                                 self.win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1
                             )
+
+            ghost_cells = tetris.project_landing()
+            for row, col in ghost_cells:
+                ghost_rect = pygame.Rect(col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE)
+                pygame.draw.rect(self.win, WHITE, ghost_rect, 1)
 
             if tetris.gameover:
                 rect = pygame.Rect((50, 140, WIDTH - 100, HEIGHT - 350))
