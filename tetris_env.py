@@ -27,20 +27,42 @@ FPS = 48
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, render_mode: str | None = None, base_fall_interval = 24):
+    def __init__(self, render_mode: str | None = None, base_fall_interval=24):
         super(TetrisEnv, self).__init__()
         self.render_mode = render_mode
         self.base_fall_interval = base_fall_interval
         self.action_space = spaces.Discrete(6)
         self.observation_space = spaces.Dict(
             spaces={
-                "piece_type": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
-                "rotation": spaces.Box(low=np.array([0, 0, 0, 0]), high=np.array([1, 1, 1, 1]), shape=(4,), dtype=np.float32),
+                "piece_type": spaces.Box(
+                    low=np.array([0, 0, 0, 0, 0, 0, 0]),
+                    high=np.array([1, 1, 1, 1, 1, 1, 1]),
+                    shape=(7,),
+                    dtype=np.float32,
+                ),
+                "rotation": spaces.Box(
+                    low=np.array([0, 0, 0, 0]),
+                    high=np.array([1, 1, 1, 1]),
+                    shape=(4,),
+                    dtype=np.float32,
+                ),
                 "x": spaces.Box(low=-1, high=COLS - 1, shape=(1,), dtype=np.float32),
                 "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
-                "ticks_to_gravity": spaces.Box(low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32),
-                "next_piece": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
-                "hold_piece": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
+                "ticks_to_gravity": spaces.Box(
+                    low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32
+                ),
+                "next_piece": spaces.Box(
+                    low=np.array([0, 0, 0, 0, 0, 0, 0]),
+                    high=np.array([1, 1, 1, 1, 1, 1, 1]),
+                    shape=(7,),
+                    dtype=np.float32,
+                ),
+                "hold_piece": spaces.Box(
+                    low=np.array([0, 0, 0, 0, 0, 0, 0]),
+                    high=np.array([1, 1, 1, 1, 1, 1, 1]),
+                    shape=(7,),
+                    dtype=np.float32,
+                ),
                 "level": spaces.Box(low=1, high=1000, shape=(1,), dtype=np.float32),
                 "board": spaces.Box(
                     low=0, high=1, shape=(ROWS * COLS,), dtype=np.float32
@@ -84,7 +106,14 @@ class TetrisEnv(gym.Env):
             "rotation": rotation_oh_env,
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
-            "ticks_to_gravity": np.array([np.clip(self.next_gravity_frame - self.frame, 0, self.base_fall_interval)], dtype=np.float32),
+            "ticks_to_gravity": np.array(
+                [
+                    np.clip(
+                        self.next_gravity_frame - self.frame, 0, self.base_fall_interval
+                    )
+                ],
+                dtype=np.float32,
+            ),
             "next_piece": next_piece_oh_enc,
             "hold_piece": hold_piece_oh_enc,
             "level": np.array([self.tetris.level], dtype=np.float32),
@@ -208,7 +237,9 @@ class TetrisEnv(gym.Env):
 
             ghost_cells = tetris.project_landing()
             for row, col in ghost_cells:
-                ghost_rect = pygame.Rect(col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE)
+                ghost_rect = pygame.Rect(
+                    col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE
+                )
                 pygame.draw.rect(self.win, WHITE, ghost_rect, 1)
 
             if tetris.gameover:
@@ -250,8 +281,17 @@ class TetrisEnv(gym.Env):
 
             scoreimg = self.font.render(f"{tetris.score}", True, WHITE)
             levelimg = self.font2.render(f"Level : {tetris.level}", True, WHITE)
-            self.win.blit(scoreimg, (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH//4, hud_top + 10))
-            self.win.blit(levelimg, (WIDTH // 2 - levelimg.get_width() // 2 + WIDTH//4, hud_top + HUD_HEIGHT - levelimg.get_height() - 10))
+            self.win.blit(
+                scoreimg,
+                (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH // 4, hud_top + 10),
+            )
+            self.win.blit(
+                levelimg,
+                (
+                    WIDTH // 2 - levelimg.get_width() // 2 + WIDTH // 4,
+                    hud_top + HUD_HEIGHT - levelimg.get_height() - 10,
+                ),
+            )
 
             pygame.draw.rect(self.win, BLUE, (0, 0, WIDTH, hud_top), 2)
             pygame.event.pump()
