@@ -1,16 +1,16 @@
 import pygame
 import random
-from collections import deque
-
-SCREEN = WIDTH, HEIGHT = 300, 500
-
 
 CELLSIZE = 20
-ROWS = (HEIGHT - 120) // CELLSIZE
-COLS = WIDTH // CELLSIZE
+ROWS = 20
+COLS = 10
+HUD_HEIGHT = 200
 
-
+WIDTH = COLS * CELLSIZE
+HEIGHT = ROWS * CELLSIZE + HUD_HEIGHT
+SCREEN = WIDTH, HEIGHT
 FPS = 24
+
 
 # COLORS *********************************************************************
 
@@ -65,6 +65,8 @@ class Tetris:
         self.level = 1
         self.board = [[0 for j in range(cols)] for i in range(rows)]
         self.next = None
+        self.hold = None
+        self.allow_hold = True
         self.gameover = False
         self.max_height = 0
         if seed is not None:
@@ -121,6 +123,7 @@ class Tetris:
         if self.intersects():
             self.gameover = True
         self.max_height = self.get_max_height()
+        self.allow_hold = True
         return freezed
     
     def project_landing(self):
@@ -153,6 +156,31 @@ class Tetris:
                 if i * 4 + j in image:
                     projection.append((ghost_y + i, self.figure.x + j))
         return projection
+
+    def hold_piece(self):
+        if not getattr(self, "figure", None):
+            return
+        
+        if not self.allow_hold:
+            return
+
+        def reset_piece(piece):
+            piece.x = self.cols//2
+            piece.y = 0
+            piece.rotation = 0
+            return piece
+
+        current = self.figure
+        if self.hold is None:
+            self.hold = reset_piece(current)
+            self.new_figure()
+        else:
+            swap = self.hold
+            self.hold = reset_piece(current)
+            self.figure = reset_piece(swap)
+            self.allow_hold = False
+
+
 
     def hard_drop(self):
         while not self.intersects():
@@ -271,6 +299,9 @@ def main():
                     if event.key == pygame.K_SPACE:
                         tetris.hard_drop()
 
+                if event.key == pygame.K_c:
+                    tetris.hold_piece()
+
                 if event.key == pygame.K_r:
                     tetris.__init__(ROWS, COLS)
 
@@ -327,22 +358,38 @@ def main():
 
         # HUD ********************************************************************
 
-        pygame.draw.rect(win, BLUE, (0, HEIGHT - 120, WIDTH, 120))
+        hud_top = HEIGHT - HUD_HEIGHT
+        pygame.draw.rect(win, BLUE, (0, hud_top, WIDTH, HUD_HEIGHT))
+        preview_margin_x = CELLSIZE
+        next_origin_y = hud_top + 10
+        hold_origin_y = next_origin_y + 4 * CELLSIZE + 20
+
         if tetris.next:
-            for i in range(4):
-                for j in range(4):
-                    if i * 4 + j in tetris.next.image():
-                        img = Assets[tetris.next.color]
-                        x = CELLSIZE * (tetris.next.x + j - 4)
-                        y = HEIGHT - 100 + CELLSIZE * (tetris.next.y + i)
-                        win.blit(img, (x, y))
+            next_image = tetris.next.image()
+            img = Assets[tetris.next.color]
+            base_x = preview_margin_x
+            for idx in next_image:
+                row, col = divmod(idx, 4)
+                x = base_x + col * CELLSIZE
+                y = next_origin_y + row * CELLSIZE
+                win.blit(img, (x, y))
+
+        if tetris.hold:
+            hold_image = tetris.hold.image()
+            img = Assets[tetris.hold.color]
+            base_x = preview_margin_x
+            for idx in hold_image:
+                row, col = divmod(idx, 4)
+                x = base_x + col * CELLSIZE
+                y = hold_origin_y + row * CELLSIZE
+                win.blit(img, (x, y))
 
         scoreimg = font.render(f"{tetris.score}", True, WHITE)
         levelimg = font2.render(f"Level : {tetris.level}", True, WHITE)
-        win.blit(scoreimg, (250 - scoreimg.get_width() // 2, HEIGHT - 110))
-        win.blit(levelimg, (250 - levelimg.get_width() // 2, HEIGHT - 30))
+        win.blit(scoreimg, (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH//4, hud_top + 10))
+        win.blit(levelimg, (WIDTH // 2 - levelimg.get_width() // 2 + WIDTH//4, hud_top + HUD_HEIGHT - levelimg.get_height() - 10))
 
-        pygame.draw.rect(win, BLUE, (0, 0, WIDTH, HEIGHT - 120), 2)
+        pygame.draw.rect(win, BLUE, (0, 0, WIDTH, hud_top), 2)
         clock.tick(FPS)
         pygame.display.update()
     pygame.quit()
