@@ -40,6 +40,7 @@ class TetrisEnv(gym.Env):
                 "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
                 "ticks_to_gravity": spaces.Box(low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32),
                 "next_piece": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
+                "hold_piece": spaces.Box(low=np.array([0,0,0,0,0,0,0]), high=np.array([1, 1, 1, 1, 1, 1, 1]), shape=(7,), dtype=np.float32),
                 "level": spaces.Box(low=1, high=1000, shape=(1,), dtype=np.float32),
                 "board": spaces.Box(
                     low=0, high=1, shape=(ROWS * COLS,), dtype=np.float32
@@ -64,23 +65,28 @@ class TetrisEnv(gym.Env):
 
         type_to_num = {"I": 0, "Z": 1, "S": 2, "J": 3, "L": 4, "T": 5, "O": 6}
 
-        type_one_hot_enc = np.zeros(7, dtype=np.float32)
-        type_one_hot_enc[type_to_num[self.tetris.figure.type]] = 1
+        type_oh_enc = np.zeros(7, dtype=np.float32)
+        type_oh_enc[type_to_num[self.tetris.figure.type]] = 1
 
-        next_piece_one_hot_enc = np.zeros(7, dtype=np.float32)
-        next_piece_one_hot_enc[type_to_num[self.tetris.next.type]] = 1
+        next_piece_oh_enc = np.zeros(7, dtype=np.float32)
+        next_piece_oh_enc[type_to_num[self.tetris.next.type]] = 1
 
-        rotation_one_hot_env = np.zeros(4, dtype=np.float32)
-        rotation_one_hot_env[self.tetris.figure.rotation] = 1
+        rotation_oh_env = np.zeros(4, dtype=np.float32)
+        rotation_oh_env[self.tetris.figure.rotation] = 1
+
+        hold_piece_oh_enc = np.zeros(7, dtype=np.float32)
+        if self.tetris.hold is not None:
+            hold_piece_oh_enc[type_to_num[self.tetris.hold.type]] = 1
 
         board = np.array(self.tetris.board)
         obs = {
-            "piece_type": type_one_hot_enc,
-            "rotation": rotation_one_hot_env,
+            "piece_type": type_oh_enc,
+            "rotation": rotation_oh_env,
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
             "ticks_to_gravity": np.array([np.clip(self.next_gravity_frame - self.frame, 0, self.base_fall_interval)], dtype=np.float32),
-            "next_piece": next_piece_one_hot_enc,
+            "next_piece": next_piece_oh_enc,
+            "hold_piece": hold_piece_oh_enc,
             "level": np.array([self.tetris.level], dtype=np.float32),
             "board": (board != 0).astype(np.float32).flatten(),
         }
