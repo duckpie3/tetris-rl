@@ -58,7 +58,7 @@ class Tetramino:
 
 
 class Tetris:
-    def __init__(self, rows, cols, seed = None):
+    def __init__(self, rows, cols, seed=None):
         self.rows = rows
         self.cols = cols
         self.score = 0
@@ -72,7 +72,7 @@ class Tetris:
         if seed is not None:
             random.seed(seed)
         self.new_figure()
-        
+
     def new_figure(self):
         if not self.next:
             self.next = Tetramino(5, 0)
@@ -112,7 +112,7 @@ class Tetris:
             self.remove_line()
 
     def freeze(self):
-        freezed = False;
+        freezed = False
         for i in range(4):
             for j in range(4):
                 if i * 4 + j in self.figure.image():
@@ -122,10 +122,9 @@ class Tetris:
         self.new_figure()
         if self.intersects():
             self.gameover = True
-        self.max_height = self.get_max_height()
         self.allow_hold = True
         return freezed
-    
+
     def project_landing(self):
         if not getattr(self, "figure", None):
             return []
@@ -160,12 +159,12 @@ class Tetris:
     def hold_piece(self):
         if not getattr(self, "figure", None):
             return
-        
+
         if not self.allow_hold:
             return
 
         def reset_piece(piece):
-            piece.x = self.cols//2
+            piece.x = self.cols // 2
             piece.y = 0
             piece.rotation = 0
             return piece
@@ -179,8 +178,6 @@ class Tetris:
             self.hold = reset_piece(current)
             self.figure = reset_piece(swap)
             self.allow_hold = False
-
-
 
     def hard_drop(self):
         while not self.intersects():
@@ -207,39 +204,6 @@ class Tetris:
         if self.intersects():
             self.figure.rotation = rotation
 
-    def get_blocked_cells(self):
-        count = 0
-        for col in range(self.cols):
-            seen_block = False
-            for row in range(self.rows):
-                if not seen_block: # Find highest block in col
-                    if self.board[row][col] != 0:
-                        seen_block = True
-                else: # Count blocked cells
-                    if self.board[row][col] == 0:
-                        count += 1
-        return count
-
-    def get_bumpiness(self):
-        coef = 0
-        prev_height = self.get_column_height(0)
-        for i in range(1, self.cols):
-            height = self.get_column_height(i)
-            coef += abs(height - prev_height)
-            prev_height = height
-        return coef
-
-    def get_max_height(self):
-        for r in reversed(range(self.rows)):
-            if all(c == 0 for c in self.board[r]):
-                return self.rows - r - 1
-        return self.rows-1
-
-    def get_column_height(self, col):
-            for r in range(self.rows):
-                if self.board[r][col] != 0:
-                    return self.rows - r
-            return 0
 
 def main():
     pygame.init()
@@ -257,7 +221,7 @@ def main():
     # Fonts
     font = pygame.font.Font("Fonts/Alternity-8w7J.ttf", 50)
     font2 = pygame.font.SysFont("cursive", 25)
-    
+
     counter = 0
     move_down = False
     can_move = True
@@ -386,8 +350,17 @@ def main():
 
         scoreimg = font.render(f"{tetris.score}", True, WHITE)
         levelimg = font2.render(f"Level : {tetris.level}", True, WHITE)
-        win.blit(scoreimg, (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH//4, hud_top + 10))
-        win.blit(levelimg, (WIDTH // 2 - levelimg.get_width() // 2 + WIDTH//4, hud_top + HUD_HEIGHT - levelimg.get_height() - 10))
+        win.blit(
+            scoreimg,
+            (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH // 4, hud_top + 10),
+        )
+        win.blit(
+            levelimg,
+            (
+                WIDTH // 2 - levelimg.get_width() // 2 + WIDTH // 4,
+                hud_top + HUD_HEIGHT - levelimg.get_height() - 10,
+            ),
+        )
 
         pygame.draw.rect(win, BLUE, (0, 0, WIDTH, hud_top), 2)
         clock.tick(FPS)

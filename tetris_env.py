@@ -2,7 +2,9 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from tetris import Tetris
+from tetris_metrics import *
 import pygame
+import copy
 
 CELLSIZE = 20
 ROWS = 20
@@ -173,9 +175,9 @@ class TetrisEnv(gym.Env):
 
         if freezed:
             self.level = self.tetris.level
-            self.bumpiness = self.tetris.get_bumpiness()
-            self.height = self.tetris.max_height
-            self.hole_count = self.tetris.get_blocked_cells()
+            self.bumpiness = get_bumpiness(self.tetris.board)
+            self.height = get_max_height(self.tetris.board)
+            self.hole_count = get_blocked_cells(self.tetris.board)
             self.score = self.tetris.score
 
             line_bonus = [0.0, 1.0, 3.0, 5.0, 8.0][self.score - score_p]
@@ -187,6 +189,7 @@ class TetrisEnv(gym.Env):
             reward += -0.2 * (self.bumpiness - bumpiness_p)
             reward += -1.0 * (self.hole_count - hole_count_p)
             reward += -0.5 * (self.height - height_p)
+
 
         terminated = self.tetris.gameover
         truncated = self.steps_without_scoring >= self.steps_until_truncated
