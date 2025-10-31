@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from tetris import Tetris
-from tetris_metrics import *
+from tetris_metrics import eval_board
 import pygame
 import copy
 
@@ -14,7 +14,7 @@ HUD_HEIGHT = 200
 WIDTH = COLS * CELLSIZE
 HEIGHT = ROWS * CELLSIZE + HUD_HEIGHT
 SCREEN = WIDTH, HEIGHT
-LEFT, RIGHT, DOWN, ROTATE, DROP, NONE = 0, 1, 2, 3, 4, 5
+LEFT, RIGHT, DOWN, ROTATE, DROP, HOLD, NONE = 0, 1, 2, 3, 4, 5, 6
 
 # COLORS *********************************************************************
 
@@ -29,11 +29,17 @@ FPS = 48
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, render_mode: str | None = None, base_fall_interval=24):
+    def __init__(self, weights=None, base_fall_interval=24, render_mode: str | None = None):
         super(TetrisEnv, self).__init__()
-        self.render_mode = render_mode
+        self.weights = weights if weights is not None else {
+            "aggregate_height": -0.510066,
+            "lines_cleared": 0.760666,
+            "holes": -0.35663,
+            "bumpiness": -0.184483,
+        }
         self.base_fall_interval = base_fall_interval
-        self.action_space = spaces.Discrete(6)
+        self.render_mode = render_mode
+        self.action_space = spaces.Discrete(7)
         self.observation_space = spaces.Dict(
             spaces={
                 "piece_type": spaces.Box(
@@ -50,6 +56,9 @@ class TetrisEnv(gym.Env):
                 ),
                 "x": spaces.Box(low=-1, high=COLS - 1, shape=(1,), dtype=np.float32),
                 "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
+                "dist_to_nearest_piece_below": spaces.Box(
+                    low=0, high=ROWS, shape=(1,), dtype=np.float32
+                ),
                 "ticks_to_gravity": spaces.Box(
                     low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32
                 ),
@@ -102,12 +111,24 @@ class TetrisEnv(gym.Env):
         if self.tetris.hold is not None:
             hold_piece_oh_enc[type_to_num[self.tetris.hold.type]] = 1
 
+        dist_to_nearest_piece_below = 0
+        for row in range(self.tetris.figure.y + 4, ROWS):
+            for col in range(COLS):
+                if self.tetris.board[row][col] != 0:
+                    dist_to_nearest_piece_below = row - (self.tetris.figure.y + 4)
+                    break
+            if dist_to_nearest_piece_below != 0:
+                break
+
         board = np.array(self.tetris.board)
         obs = {
             "piece_type": type_oh_enc,
             "rotation": rotation_oh_env,
             "x": np.array([self.tetris.figure.x], dtype=np.float32),
             "y": np.array([self.tetris.figure.y], dtype=np.float32),
+            "dist_to_nearest_piece_below": np.array(
+                [dist_to_nearest_piece_below], dtype=np.float32
+            ),
             "ticks_to_gravity": np.array(
                 [
                     np.clip(
@@ -123,21 +144,26 @@ class TetrisEnv(gym.Env):
         }
         return obs
 
+    def _get_projected_board(self):
+        projection = self.tetris.project_landing()
+        board_copy = copy.deepcopy(self.tetris.board)
+        for row, col in projection:
+            board_copy[row][col] = self.tetris.figure.color
+        return board_copy
+    
+    def _potential(self):
+        return eval_board(self._get_projected_board(), self.weights)
+
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed, options=options)
         self.tetris = Tetris(ROWS, COLS, seed)
-
-        self.bumpiness = 0
-        self.height = 0
-        self.hole_count = 0
-        self.score = 0
 
         self.fall_interval = self.base_fall_interval
         self.frame = 0
         self.next_gravity_frame = self.fall_interval
         self.level = self.tetris.level
 
-        self.steps_until_truncated = 35
+        self.steps_until_truncated = 40
         self.steps_without_scoring = 0
         obs = self._get_observation()
 
@@ -145,64 +171,58 @@ class TetrisEnv(gym.Env):
         return obs, info
 
     def step(self, action):
-
-        bumpiness_p = self.bumpiness
-        hole_count_p = self.hole_count
-        score_p = self.score
-        height_p = self.height
         level_p = self.level
+        score_before = self.tetris.score
 
-        freezed = False
+        locked = False
         reward = 0.0
-
+        reward += 0.001 # small living reward to encourage longer games
+        phi = self._potential()
+        gamma = 0.99
+        beta  = 0.5 
         if action == LEFT:
             self.tetris.go_side(-1)
         elif action == RIGHT:
             self.tetris.go_side(1)
         elif action == DOWN:
-            self.tetris.go_down()
+            locked = self.tetris.go_down()
+            reward += 0.01
         elif action == ROTATE:
             self.tetris.rotate()
         elif action == DROP:
+            y0 = self.tetris.figure.y
             self.tetris.hard_drop()
-            freezed = True
+            dist = y0 - self.tetris.figure.y  # distance dropped
+            reward += 0.02 * dist
+            locked = True
+        elif action == HOLD:
+            self.tetris.hold_piece()
         elif action == NONE:
             pass
 
-        if not freezed and self.frame >= self.next_gravity_frame:
-            freezed = self.tetris.go_down()
-            self.next_gravity_frame += self.fall_interval
+        if not locked and self.frame >= self.next_gravity_frame:
+            locked = self.tetris.go_down()
+            self.next_gravity_frame = self.frame + self.fall_interval
 
-        if freezed:
+        phi_p = self._potential()
+        reward += beta * (gamma * phi_p - phi)
+
+        if locked:
             self.level = self.tetris.level
-            self.bumpiness = get_bumpiness(self.tetris.board)
-            self.height = get_max_height(self.tetris.board)
-            self.hole_count = get_blocked_cells(self.tetris.board)
-            self.score = self.tetris.score
-
-            line_bonus = [0.0, 1.0, 3.0, 5.0, 8.0][self.score - score_p]
-            if line_bonus != 0.0:
-                self.steps_without_scoring = 0
-            else:
-                self.steps_without_scoring += 1
-            reward += line_bonus
-            reward += -0.2 * (self.bumpiness - bumpiness_p)
-            reward += -1.0 * (self.hole_count - hole_count_p)
-            reward += -0.5 * (self.height - height_p)
-
-
+            lines = self.tetris.score - score_before
+            reward += 10.0 * lines**2
+            self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
         terminated = self.tetris.gameover
         truncated = self.steps_without_scoring >= self.steps_until_truncated
 
-        if self.tetris.gameover:
-            reward -= 5
-
-        reward = float(np.clip(reward, -20.0, 20.0))
+        if terminated or truncated:
+            reward -= 100.0
 
         self.frame += 1
 
         if self.level != level_p and self.level <= 5:
             self.fall_interval = self.base_fall_interval - 4 * (self.level - 1)
+
 
         obs = self._get_observation()
 

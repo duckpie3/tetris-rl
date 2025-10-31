@@ -44,3 +44,33 @@ def get_column_height(col, board):
         if board[r][col] != 0:
             return rows - r
     return 0
+
+def clear_lines(board):
+    new_board = [row for row in board if any(cell == 0 for cell in row)]
+    lines_cleared = len(board) - len(new_board)
+    for _ in range(lines_cleared):
+        new_board.insert(0, [0] * len(board[0]))
+    return new_board, lines_cleared
+
+def eval_board(board, weights=None):
+    board, lines_cleared = clear_lines(board)
+    if weights is None:
+        weights = {
+            "aggregate_height": -0.510066,
+            "lines_cleared": 0.760666,
+            "holes": -0.35663,
+            "bumpiness": -0.184483,
+        }
+
+    aggregate_height = get_aggregate_height(board)
+    holes = get_blocked_cells(board)
+    bumpiness = get_bumpiness(board)
+
+    score = (
+        weights["aggregate_height"] * aggregate_height +
+        weights["lines_cleared"] * lines_cleared +
+        weights["holes"] * holes +
+        weights["bumpiness"] * bumpiness
+    )
+
+    return score
