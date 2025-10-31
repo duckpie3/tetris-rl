@@ -202,10 +202,23 @@ class Tetris:
             self.figure.x -= dx
 
     def rotate(self):
-        rotation = self.figure.rotation
+        if not getattr(self, "figure", None):
+            return
+
+        original_rotation = self.figure.rotation
+        original_x = self.figure.x
+
         self.figure.rotate()
-        if self.intersects():
-            self.figure.rotation = rotation
+
+        # Simple wall-kick offsets to allow rotation near walls.
+        for dx in (0, -1, 1, -2, 2):
+            self.figure.x = original_x + dx
+            if not self.intersects():
+                return
+
+        # Rotation failed; restore original state.
+        self.figure.rotation = original_rotation
+        self.figure.x = original_x
 
 
 def main():
