@@ -190,10 +190,8 @@ class TetrisEnv(gym.Env):
         elif action == ROTATE:
             self.tetris.rotate()
         elif action == DROP:
-            y0 = self.tetris.figure.y
-            self.tetris.hard_drop()
-            dist = y0 - self.tetris.figure.y  # distance dropped
-            reward += 0.02 * dist
+            rows_dropped = self.tetris.hard_drop()
+            reward += 0.02 * rows_dropped
             locked = True
         elif action == HOLD:
             self.tetris.hold_piece()

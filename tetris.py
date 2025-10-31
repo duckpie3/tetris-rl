@@ -180,10 +180,13 @@ class Tetris:
             self.allow_hold = False
 
     def hard_drop(self):
+        rows_dropped = -1
         while not self.intersects():
             self.figure.y += 1
+            rows_dropped += 1
         self.figure.y -= 1
         self.freeze()
+        return rows_dropped
 
     def go_down(self):
         self.figure.y += 1
