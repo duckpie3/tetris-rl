@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from tetris import Tetris
-from tetris_metrics import eval_board
+from tetris_metrics import eval_board, get_column_height
 import pygame
 import copy
 
@@ -34,6 +34,7 @@ class TetrisEnv(gym.Env):
             "aggregate_height": -0.510066,
             "holes": -0.35663,
             "bumpiness": -0.184483,
+            "wells": -0.100000,
         }
         self.base_fall_interval = base_fall_interval
         self.render_mode = render_mode
@@ -58,8 +59,11 @@ class TetrisEnv(gym.Env):
                     shape=(7,),
                     dtype=np.float32,
                 ),
-                "board": spaces.Box(
-                    low=0, high=1, shape=(ROWS * COLS,), dtype=np.float32
+                "column_heights": spaces.Box(
+                    low=np.zeros(COLS, dtype=np.float32),
+                    high=np.array([ROWS - 1] * COLS, dtype=np.float32),
+                    shape=(COLS,),
+                    dtype=np.float32,
                 ),
             }
         )
@@ -91,12 +95,14 @@ class TetrisEnv(gym.Env):
         if self.tetris.hold is not None:
             hold_piece_oh_enc[type_to_num[self.tetris.hold.type]] = 1
 
+        column_heights = np.array([get_column_height(col, self.tetris.board) for col in range(COLS)], dtype=np.float32)
+
         board = np.array(self.tetris.board)
         obs = {
             "piece_type": type_oh_enc,
             "next_piece": next_piece_oh_enc,
             "hold_piece": hold_piece_oh_enc,
-            "board": (board != 0).astype(np.float32).flatten(),
+            "column_heights": column_heights,
         }
         return obs
 
@@ -123,26 +129,28 @@ class TetrisEnv(gym.Env):
 
     def step(self, action):
         phi = self._potential()
-        gamma = 0.5
+        gamma = 0.9
         score_before = self.tetris.score
 
         reward = 0.0
         reward += 0.01 # small living reward to encourage longer games
         hold, x_pos, rotation = action
         if hold == 1:
-            self.tetris.hold_piece()
-
-        self.tetris.go_side(x_pos - self.tetris.figure.x)
-        for _ in range(rotation):
-            self.tetris.rotate()
-
-        self.tetris.hard_drop()
-        phi_prime = self._potential()
-        reward += gamma * (phi_prime - phi)
-        lines = self.tetris.score - score_before
-        reward += 100 * lines**2
-
-        self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
+            if self.tetris.allow_hold:
+                self.tetris.hold_piece()
+                reward -= 0.1  # small penalty for using hold
+            else:
+                reward -= 1.0  # larger penalty for invalid hold
+        if hold == 0 or (hold == 1 and not self.tetris.allow_hold):
+            self.tetris.go_side(x_pos - self.tetris.figure.x)
+            for _ in range(rotation):
+                self.tetris.rotate()
+            self.tetris.hard_drop()
+            phi_prime = self._potential()
+            reward += gamma * phi_prime - phi
+            lines = self.tetris.score - score_before
+            reward += 100 * lines**2
+            self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
         
         terminated = self.tetris.gameover
         truncated = self.steps_without_scoring >= self.steps_until_truncated

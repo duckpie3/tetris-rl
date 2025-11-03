@@ -45,6 +45,26 @@ def get_column_height(col, board):
             return rows - r
     return 0
 
+def get_wells(board):
+    wells = 0.0  # Float for fractional scoring if desired
+    cols = len(board[0])
+    if cols < 3:
+        return 0  # Can't have wells in <3 cols
+    
+    heights = [get_column_height(c, board) for c in range(cols)]  # Precompute for efficiency
+    
+    for col in range(1, cols - 1):  # Internal columns only
+        col_height = heights[col]
+        left_h = heights[col - 1]
+        right_h = heights[col + 1]
+        
+        # Well depth: how much lower than the lower neighbor
+        if left_h > col_height and right_h > col_height:
+            depth = min(left_h, right_h) - col_height
+            wells += depth  # Or max(0, depth - threshold) for deeper bonus
+    
+    return wells
+
 def clear_lines(board):
     new_board = [row for row in board if any(cell == 0 for cell in row)]
     lines_cleared = len(board) - len(new_board)
@@ -56,19 +76,21 @@ def eval_board(board, weights=None):
     if weights is None:
         weights = {
             "aggregate_height": -0.510066,
-            "lines_cleared": 0.760666,
             "holes": -0.55663,
             "bumpiness": -0.184483,
+            "wells": -0.100000,
         }
 
     aggregate_height = get_aggregate_height(board)
     holes = get_blocked_cells(board)
     bumpiness = get_bumpiness(board)
+    wells = get_wells(board)
 
     score = (
         weights["aggregate_height"] * aggregate_height +
         weights["holes"] * holes +
-        weights["bumpiness"] * bumpiness
+        weights["bumpiness"] * bumpiness +
+        weights["wells"] * wells
     )
 
     return score
