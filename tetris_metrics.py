@@ -53,12 +53,11 @@ def clear_lines(board):
     return new_board, lines_cleared
 
 def eval_board(board, weights=None):
-    board, lines_cleared = clear_lines(board)
     if weights is None:
         weights = {
             "aggregate_height": -0.510066,
             "lines_cleared": 0.760666,
-            "holes": -0.35663,
+            "holes": -0.55663,
             "bumpiness": -0.184483,
         }
 
@@ -68,7 +67,6 @@ def eval_board(board, weights=None):
 
     score = (
         weights["aggregate_height"] * aggregate_height +
-        weights["lines_cleared"] * lines_cleared +
         weights["holes"] * holes +
         weights["bumpiness"] * bumpiness
     )

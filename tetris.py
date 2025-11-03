@@ -42,13 +42,13 @@ class Tetramino:
 
     TYPES = ["I", "Z", "S", "J", "L", "T", "O"]
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, rotation=0):
         self.x = x
         self.y = y
         self.type = random.choice(self.TYPES)
         self.shape = self.FIGURES[self.type]
         self.color = random.randint(1, 4)
-        self.rotation = 0
+        self.rotation = rotation
 
     def image(self):
         return self.shape[self.rotation]
@@ -95,7 +95,7 @@ class Tetris:
 
     def remove_line(self):
         rerun = False
-        for y in range(self.rows - 1, 0, -1):
+        for y in range(self.rows - 1, -1, -1):
             is_full = True
             for x in range(0, self.cols):
                 if self.board[y][x] == 0:
@@ -112,18 +112,15 @@ class Tetris:
             self.remove_line()
 
     def freeze(self):
-        freezed = False
         for i in range(4):
             for j in range(4):
                 if i * 4 + j in self.figure.image():
                     self.board[i + self.figure.y][j + self.figure.x] = self.figure.color
-                    freezed = True
         self.remove_line()
         self.new_figure()
         if self.intersects():
             self.gameover = True
         self.allow_hold = True
-        return freezed
 
     def project_landing(self):
         if not getattr(self, "figure", None):
@@ -180,21 +177,18 @@ class Tetris:
             self.allow_hold = False
 
     def hard_drop(self):
-        rows_dropped = -1
+        if self.intersects():
+            return
         while not self.intersects():
             self.figure.y += 1
-            rows_dropped += 1
         self.figure.y -= 1
         self.freeze()
-        return rows_dropped
 
     def go_down(self):
         self.figure.y += 1
         if self.intersects():
             self.figure.y -= 1
             self.freeze()
-            return True
-        return False
 
     def go_side(self, dx):
         self.figure.x += dx

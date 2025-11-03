@@ -14,7 +14,6 @@ HUD_HEIGHT = 200
 WIDTH = COLS * CELLSIZE
 HEIGHT = ROWS * CELLSIZE + HUD_HEIGHT
 SCREEN = WIDTH, HEIGHT
-LEFT, RIGHT, DOWN, ROTATE, DROP, HOLD, NONE = 0, 1, 2, 3, 4, 5, 6
 
 # COLORS *********************************************************************
 
@@ -23,7 +22,7 @@ BLUE = (31, 25, 76)
 RED = (252, 91, 122)
 WHITE = (255, 255, 255)
 
-FPS = 48
+FPS = 8
 
 
 class TetrisEnv(gym.Env):
@@ -33,13 +32,12 @@ class TetrisEnv(gym.Env):
         super(TetrisEnv, self).__init__()
         self.weights = weights if weights is not None else {
             "aggregate_height": -0.510066,
-            "lines_cleared": 0.760666,
             "holes": -0.35663,
             "bumpiness": -0.184483,
         }
         self.base_fall_interval = base_fall_interval
         self.render_mode = render_mode
-        self.action_space = spaces.Discrete(7)
+        self.action_space = spaces.MultiDiscrete([2, COLS, 4])
         self.observation_space = spaces.Dict(
             spaces={
                 "piece_type": spaces.Box(
@@ -47,20 +45,6 @@ class TetrisEnv(gym.Env):
                     high=np.array([1, 1, 1, 1, 1, 1, 1]),
                     shape=(7,),
                     dtype=np.float32,
-                ),
-                "rotation": spaces.Box(
-                    low=np.array([0, 0, 0, 0]),
-                    high=np.array([1, 1, 1, 1]),
-                    shape=(4,),
-                    dtype=np.float32,
-                ),
-                "x": spaces.Box(low=-1, high=COLS - 1, shape=(1,), dtype=np.float32),
-                "y": spaces.Box(low=0, high=ROWS - 1, shape=(1,), dtype=np.float32),
-                "dist_to_nearest_piece_below": spaces.Box(
-                    low=0, high=ROWS, shape=(1,), dtype=np.float32
-                ),
-                "ticks_to_gravity": spaces.Box(
-                    low=0, high=self.base_fall_interval, shape=(1,), dtype=np.float32
                 ),
                 "next_piece": spaces.Box(
                     low=np.array([0, 0, 0, 0, 0, 0, 0]),
@@ -74,7 +58,6 @@ class TetrisEnv(gym.Env):
                     shape=(7,),
                     dtype=np.float32,
                 ),
-                "level": spaces.Box(low=1, high=1000, shape=(1,), dtype=np.float32),
                 "board": spaces.Box(
                     low=0, high=1, shape=(ROWS * COLS,), dtype=np.float32
                 ),
@@ -104,42 +87,15 @@ class TetrisEnv(gym.Env):
         next_piece_oh_enc = np.zeros(7, dtype=np.float32)
         next_piece_oh_enc[type_to_num[self.tetris.next.type]] = 1
 
-        rotation_oh_env = np.zeros(4, dtype=np.float32)
-        rotation_oh_env[self.tetris.figure.rotation] = 1
-
         hold_piece_oh_enc = np.zeros(7, dtype=np.float32)
         if self.tetris.hold is not None:
             hold_piece_oh_enc[type_to_num[self.tetris.hold.type]] = 1
 
-        dist_to_nearest_piece_below = 0
-        for row in range(self.tetris.figure.y + 4, ROWS):
-            for col in range(COLS):
-                if self.tetris.board[row][col] != 0:
-                    dist_to_nearest_piece_below = row - (self.tetris.figure.y + 4)
-                    break
-            if dist_to_nearest_piece_below != 0:
-                break
-
         board = np.array(self.tetris.board)
         obs = {
             "piece_type": type_oh_enc,
-            "rotation": rotation_oh_env,
-            "x": np.array([self.tetris.figure.x], dtype=np.float32),
-            "y": np.array([self.tetris.figure.y], dtype=np.float32),
-            "dist_to_nearest_piece_below": np.array(
-                [dist_to_nearest_piece_below], dtype=np.float32
-            ),
-            "ticks_to_gravity": np.array(
-                [
-                    np.clip(
-                        self.next_gravity_frame - self.frame, 0, self.base_fall_interval
-                    )
-                ],
-                dtype=np.float32,
-            ),
             "next_piece": next_piece_oh_enc,
             "hold_piece": hold_piece_oh_enc,
-            "level": np.array([self.tetris.level], dtype=np.float32),
             "board": (board != 0).astype(np.float32).flatten(),
         }
         return obs
@@ -152,16 +108,11 @@ class TetrisEnv(gym.Env):
         return board_copy
     
     def _potential(self):
-        return eval_board(self._get_projected_board(), self.weights)
+        return eval_board(self.tetris.board, self.weights)
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed, options=options)
         self.tetris = Tetris(ROWS, COLS, seed)
-
-        self.fall_interval = self.base_fall_interval
-        self.frame = 0
-        self.next_gravity_frame = self.fall_interval
-        self.level = self.tetris.level
 
         self.steps_until_truncated = 40
         self.steps_without_scoring = 0
@@ -171,56 +122,33 @@ class TetrisEnv(gym.Env):
         return obs, info
 
     def step(self, action):
-        level_p = self.level
+        phi = self._potential()
+        gamma = 0.5
         score_before = self.tetris.score
 
-        locked = False
         reward = 0.0
-        reward += 0.001 # small living reward to encourage longer games
-        phi = self._potential()
-        gamma = 0.99
-        beta  = 0.5 
-        if action == LEFT:
-            self.tetris.go_side(-1)
-        elif action == RIGHT:
-            self.tetris.go_side(1)
-        elif action == DOWN:
-            locked = self.tetris.go_down()
-            reward += 0.01
-        elif action == ROTATE:
-            self.tetris.rotate()
-        elif action == DROP:
-            rows_dropped = self.tetris.hard_drop()
-            reward += 0.02 * rows_dropped
-            locked = True
-        elif action == HOLD:
+        reward += 0.01 # small living reward to encourage longer games
+        hold, x_pos, rotation = action
+        if hold == 1:
             self.tetris.hold_piece()
-        elif action == NONE:
-            pass
 
-        if not locked and self.frame >= self.next_gravity_frame:
-            locked = self.tetris.go_down()
-            self.next_gravity_frame = self.frame + self.fall_interval
+        self.tetris.go_side(x_pos - self.tetris.figure.x)
+        for _ in range(rotation):
+            self.tetris.rotate()
 
-        phi_p = self._potential()
-        reward += beta * (gamma * phi_p - phi)
+        self.tetris.hard_drop()
+        phi_prime = self._potential()
+        reward += gamma * (phi_prime - phi)
+        lines = self.tetris.score - score_before
+        reward += 100 * lines**2
 
-        if locked:
-            self.level = self.tetris.level
-            lines = self.tetris.score - score_before
-            reward += 10.0 * lines**2
-            self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
+        self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
+        
         terminated = self.tetris.gameover
         truncated = self.steps_without_scoring >= self.steps_until_truncated
 
         if terminated or truncated:
             reward -= 100.0
-
-        self.frame += 1
-
-        if self.level != level_p and self.level <= 5:
-            self.fall_interval = self.base_fall_interval - 4 * (self.level - 1)
-
 
         obs = self._get_observation()
 
