@@ -4,10 +4,13 @@ import random
 CELLSIZE = 20
 ROWS = 20
 COLS = 10
-HUD_HEIGHT = 200
+HUD_WIDTH = 160
 
-WIDTH = COLS * CELLSIZE
-HEIGHT = ROWS * CELLSIZE + HUD_HEIGHT
+BOARD_WIDTH = COLS * CELLSIZE
+BOARD_HEIGHT = ROWS * CELLSIZE
+
+WIDTH = BOARD_WIDTH + HUD_WIDTH
+HEIGHT = BOARD_HEIGHT
 SCREEN = WIDTH, HEIGHT
 FPS = 24
 
@@ -228,8 +231,11 @@ class Tetris:
 
     def render(self, fps=FPS):
         self.win.fill(BLACK)
-        for x in range(ROWS):
-            for y in range(COLS):
+        board_width = self.cols * CELLSIZE
+        board_height = self.rows * CELLSIZE
+
+        for x in range(self.rows):
+            for y in range(self.cols):
                 if self.board[x][y] > 0:
                     val = self.board[x][y]
                     img = self.Assets[val]
@@ -256,7 +262,14 @@ class Tetris:
         # GAMEOVER ***************************************************************
 
         if self.gameover:
-            rect = pygame.Rect((50, 140, WIDTH - 100, HEIGHT - 350))
+            rect_width = board_width - 100
+            rect_height = board_height - 150
+            rect = pygame.Rect(
+                50,
+                board_height // 2 - rect_height // 2,
+                rect_width,
+                rect_height,
+            )
             pygame.draw.rect(self.win, BLACK, rect)
             pygame.draw.rect(self.win, RED, rect, 2)
 
@@ -270,29 +283,37 @@ class Tetris:
 
         # HUD ********************************************************************
 
-        hud_top = HEIGHT - HUD_HEIGHT
-        pygame.draw.rect(self.win, BLUE, (0, hud_top, WIDTH, HUD_HEIGHT))
-        preview_margin_x = CELLSIZE
-        next_origin_y = hud_top + 10
-        hold_origin_y = next_origin_y + 4 * CELLSIZE + 20
+        hud_left = board_width
+        pygame.draw.rect(self.win, BLUE, (hud_left, 0, HUD_WIDTH, HEIGHT))
+        preview_margin_x = hud_left + CELLSIZE
+
+        next_label = self.font2.render("Next", True, WHITE)
+        next_label_x = hud_left + HUD_WIDTH // 2 - next_label.get_width() // 2
+        next_label_y = CELLSIZE // 2
+        self.win.blit(next_label, (next_label_x, next_label_y))
+        next_origin_y = next_label_y + next_label.get_height() + 10
+
+        hold_label = self.font2.render("Hold", True, WHITE)
+        hold_label_x = hud_left + HUD_WIDTH // 2 - hold_label.get_width() // 2
+        hold_label_y = next_origin_y + 4 * CELLSIZE + 30
+        self.win.blit(hold_label, (hold_label_x, hold_label_y))
+        hold_origin_y = hold_label_y + hold_label.get_height() + 10
 
         if self.next:
             next_image = self.next.image()
             img = self.Assets[self.next.color]
-            base_x = preview_margin_x
             for idx in next_image:
                 row, col = divmod(idx, 4)
-                x = base_x + col * CELLSIZE
+                x = preview_margin_x + col * CELLSIZE
                 y = next_origin_y + row * CELLSIZE
                 self.win.blit(img, (x, y))
 
         if self.hold:
             hold_image = self.hold.image()
             img = self.Assets[self.hold.color]
-            base_x = preview_margin_x
             for idx in hold_image:
                 row, col = divmod(idx, 4)
-                x = base_x + col * CELLSIZE
+                x = preview_margin_x + col * CELLSIZE
                 y = hold_origin_y + row * CELLSIZE
                 self.win.blit(img, (x, y))
 
@@ -300,17 +321,21 @@ class Tetris:
         levelimg = self.font2.render(f"Level : {self.level}", True, WHITE)
         self.win.blit(
             scoreimg,
-            (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH // 4, hud_top + 10),
+            (
+                hud_left + HUD_WIDTH // 2 - scoreimg.get_width() // 2,
+                hold_origin_y + 4 * CELLSIZE + 30,
+            ),
         )
         self.win.blit(
             levelimg,
             (
-                WIDTH // 2 - levelimg.get_width() // 2 + WIDTH // 4,
-                hud_top + HUD_HEIGHT - levelimg.get_height() - 10,
+                hud_left + HUD_WIDTH // 2 - levelimg.get_width() // 2,
+                hold_origin_y + 4 * CELLSIZE + 30 + scoreimg.get_height() + 20,
             ),
         )
 
-        pygame.draw.rect(self.win, BLUE, (0, 0, WIDTH, hud_top), 2)
+        pygame.draw.rect(self.win, BLUE, (0, 0, board_width, board_height), 2)
+        pygame.draw.line(self.win, BLUE, (hud_left, 0), (hud_left, HEIGHT), 2)
         self.clock.tick(fps)
         pygame.display.update()
 
