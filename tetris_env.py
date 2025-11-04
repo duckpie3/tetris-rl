@@ -28,7 +28,7 @@ FPS = 8
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, weights=None, base_fall_interval=24, render_mode: str | None = None):
+    def __init__(self, weights=None, render_mode: str | None = None):
         super(TetrisEnv, self).__init__()
         self.weights = weights if weights is not None else {
             "aggregate_height": -0.510066,
@@ -36,7 +36,6 @@ class TetrisEnv(gym.Env):
             "bumpiness": -0.184483,
             "wells": -0.100000,
         }
-        self.base_fall_interval = base_fall_interval
         self.render_mode = render_mode
         self.action_space = spaces.MultiDiscrete([2, COLS, 4])
         self.observation_space = spaces.Dict(
@@ -86,7 +85,6 @@ class TetrisEnv(gym.Env):
 
         column_heights = np.array([get_column_height(col, self.tetris.board) for col in range(COLS)], dtype=np.float32)
 
-        board = np.array(self.tetris.board)
         obs = {
             "piece_type": type_oh_enc,
             "next_piece": next_piece_oh_enc,
