@@ -4,7 +4,6 @@ import numpy as np
 from tetris import Tetris
 from tetris_metrics import eval_board, get_column_height
 import pygame
-import copy
 
 CELLSIZE = 20
 ROWS = 20
@@ -151,6 +150,5 @@ class TetrisEnv(gym.Env):
 
     def close(self):
         if self.render_mode == "human":
-            pygame.quit()
-            pygame.display.quit()
+            self.tetris.close()
         return super().close()

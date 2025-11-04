@@ -314,6 +314,10 @@ class Tetris:
         self.clock.tick(fps)
         pygame.display.update()
 
+    def close(self):
+        pygame.quit()
+        pygame.display.quit()
+
 def main():
     # pygame.init()
     # win = pygame.display.set_mode(SCREEN, pygame.NOFRAME)
@@ -387,7 +391,7 @@ def main():
                 if event.key == pygame.K_DOWN:
                     move_down = False
         tetris.render()
-    pygame.quit()
+    tetris.close()
 
 
 if __name__ == "__main__":
