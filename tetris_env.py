@@ -27,7 +27,7 @@ FPS = 8
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, weights=None, render_mode: str | None = None):
+    def __init__(self, weights=None, gamma=0.9, beta=0.9, render_mode: str | None = None):
         super(TetrisEnv, self).__init__()
         self.weights = weights if weights is not None else {
             "aggregate_height": -0.510066,
@@ -35,6 +35,8 @@ class TetrisEnv(gym.Env):
             "bumpiness": -0.184483,
             "wells": -0.100000,
         }
+        self.gamma = gamma
+        self.beta = beta
         self.render_mode = render_mode
         self.action_space = spaces.MultiDiscrete([2, COLS, 4])
         self.observation_space = spaces.Dict(
@@ -110,7 +112,6 @@ class TetrisEnv(gym.Env):
 
     def step(self, action):
         phi = self._potential()
-        gamma = 0.9
         score_before = self.tetris.score
 
         reward = 0.0
@@ -128,7 +129,7 @@ class TetrisEnv(gym.Env):
                 self.tetris.rotate()
             self.tetris.hard_drop()
             phi_prime = self._potential()
-            reward += gamma * phi_prime - phi
+            reward += self.beta * (self.gamma * phi_prime - phi) # potential-based reward shaping
             lines = self.tetris.score - score_before
             reward += 100 * lines**2
             self.steps_without_scoring = 0 if lines > 0 else (self.steps_without_scoring + 1)
@@ -137,7 +138,7 @@ class TetrisEnv(gym.Env):
         truncated = self.steps_without_scoring >= self.steps_until_truncated
 
         if terminated or truncated:
-            reward -= 100.0
+            reward -= 40.0  # large penalty for losing
 
         obs = self._get_observation()
 
