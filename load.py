@@ -1,7 +1,7 @@
 from pathlib import Path
 from stable_baselines3 import PPO
 from tetris_env import TetrisEnv
-
+from gymnasium.wrappers import NormalizeObservation, FlattenObservation
 
 def _latest_model_path(models_dir: Path) -> Path:
     """Return the checkpoint with the highest timestep count."""
@@ -23,12 +23,20 @@ def _latest_model_path(models_dir: Path) -> Path:
     return checkpoints[0][1]
 
 
-models_dir = Path("models") / "PPO"
+models_dir = Path("models") / "PPO2"
 model_path = _latest_model_path(models_dir)
 
-env = TetrisEnv(render_mode="human")
+weights = {
+    "aggregate_height": -0.510066,
+    "holes": -0.55663,
+    "bumpiness": -0.218483,
+    "wells": -0.100000,
+}
+
+env = NormalizeObservation(FlattenObservation(TetrisEnv(weights=weights, gamma=0.9, beta=1.0, render_mode="human")))
 
 model = PPO.load(str(model_path), env)
+print(f"Loaded checkpoint: {model_path}")
 
 num_episodes = 10
 for ep in range(num_episodes):

@@ -1,14 +1,23 @@
 from stable_baselines3 import PPO
 from tetris_env import TetrisEnv
 from pathlib import Path
+from gymnasium.wrappers import NormalizeObservation, FlattenObservation
 
-models_dir = Path("models") / "PPO"
+models_dir = Path("models") / "PPO2"
 logs_dir = Path("logs")
 
 models_dir.mkdir(parents=True, exist_ok=True)
 logs_dir.mkdir(parents=True, exist_ok=True)
 
-env = TetrisEnv()
+
+weights = {
+    "aggregate_height": -0.510066,
+    "holes": -0.55663,
+    "bumpiness": -0.218483,
+    "wells": -0.100000,
+}
+
+env = NormalizeObservation(FlattenObservation(TetrisEnv(weights=weights, gamma=0.9, beta=1.0)))
 
 latest_checkpoint = None
 latest_timestep = 0
@@ -21,10 +30,10 @@ if latest_checkpoint:
     print(f"Loading existing model from {latest_checkpoint}")
     model = PPO.load(str(latest_checkpoint), env=env, tensorboard_log=str(logs_dir))
 else:
-    model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log=str(logs_dir))
+    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=str(logs_dir))
 
 TIMESTEPS = 10_000
 start_iteration = latest_timestep // TIMESTEPS
-for i in range(start_iteration, start_iteration + 100):
-    model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name="PPO")
+for i in range(start_iteration, start_iteration + 500):
+    model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name="PPO2")
     model.save(str(models_dir / f"{TIMESTEPS * (i + 1)}"))
