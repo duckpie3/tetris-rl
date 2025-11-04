@@ -105,13 +105,6 @@ class TetrisEnv(gym.Env):
             "column_heights": column_heights,
         }
         return obs
-
-    def _get_projected_board(self):
-        projection = self.tetris.project_landing()
-        board_copy = copy.deepcopy(self.tetris.board)
-        for row, col in projection:
-            board_copy[row][col] = self.tetris.figure.color
-        return board_copy
     
     def _potential(self):
         return eval_board(self.tetris.board, self.weights)
