@@ -214,34 +214,132 @@ class Tetris:
         self.figure.rotation = original_rotation
         self.figure.x = original_x
 
+    def init_render(self):
+        pygame.init()
+        self.win = pygame.display.set_mode(SCREEN, pygame.NOFRAME)
+        self.clock = pygame.time.Clock()
+        self.img1 = pygame.image.load("Assets/1.png")
+        self.img2 = pygame.image.load("Assets/2.png")
+        self.img3 = pygame.image.load("Assets/3.png")
+        self.img4 = pygame.image.load("Assets/4.png")
+        self.Assets = {1: self.img1, 2: self.img2, 3: self.img3, 4: self.img4}
+        self.font = pygame.font.Font("Fonts/Alternity-8w7J.ttf", 50)
+        self.font2 = pygame.font.SysFont("cursive", 25)
+
+    def render(self, fps=FPS):
+        self.win.fill(BLACK)
+        for x in range(ROWS):
+            for y in range(COLS):
+                if self.board[x][y] > 0:
+                    val = self.board[x][y]
+                    img = self.Assets[val]
+                    self.win.blit(img, (y * CELLSIZE, x * CELLSIZE))
+                    pygame.draw.rect(
+                        self.win, WHITE, (y * CELLSIZE, x * CELLSIZE, CELLSIZE, CELLSIZE), 1
+                    )
+
+        if self.figure:
+            for i in range(4):
+                for j in range(4):
+                    if i * 4 + j in self.figure.image():
+                        img = self.Assets[self.figure.color]
+                        x = CELLSIZE * (self.figure.x + j)
+                        y = CELLSIZE * (self.figure.y + i)
+                        self.win.blit(img, (x, y))
+                        pygame.draw.rect(self.win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1)
+
+        ghost_cells = self.project_landing()
+        for row, col in ghost_cells:
+            ghost_rect = pygame.Rect(col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE)
+            pygame.draw.rect(self.win, WHITE, ghost_rect, 1)
+
+        # GAMEOVER ***************************************************************
+
+        if self.gameover:
+            rect = pygame.Rect((50, 140, WIDTH - 100, HEIGHT - 350))
+            pygame.draw.rect(self.win, BLACK, rect)
+            pygame.draw.rect(self.win, RED, rect, 2)
+
+            over = self.font2.render("Game Over", True, WHITE)
+            msg1 = self.font2.render("Press r to restart", True, RED)
+            msg2 = self.font2.render("Press q to quit", True, RED)
+
+            self.win.blit(over, (rect.centerx - over.get_width() / 2, rect.y + 20))
+            self.win.blit(msg1, (rect.centerx - msg1.get_width() / 2, rect.y + 80))
+            self.win.blit(msg2, (rect.centerx - msg2.get_width() / 2, rect.y + 110))
+
+        # HUD ********************************************************************
+
+        hud_top = HEIGHT - HUD_HEIGHT
+        pygame.draw.rect(self.win, BLUE, (0, hud_top, WIDTH, HUD_HEIGHT))
+        preview_margin_x = CELLSIZE
+        next_origin_y = hud_top + 10
+        hold_origin_y = next_origin_y + 4 * CELLSIZE + 20
+
+        if self.next:
+            next_image = self.next.image()
+            img = self.Assets[self.next.color]
+            base_x = preview_margin_x
+            for idx in next_image:
+                row, col = divmod(idx, 4)
+                x = base_x + col * CELLSIZE
+                y = next_origin_y + row * CELLSIZE
+                self.win.blit(img, (x, y))
+
+        if self.hold:
+            hold_image = self.hold.image()
+            img = self.Assets[self.hold.color]
+            base_x = preview_margin_x
+            for idx in hold_image:
+                row, col = divmod(idx, 4)
+                x = base_x + col * CELLSIZE
+                y = hold_origin_y + row * CELLSIZE
+                self.win.blit(img, (x, y))
+
+        scoreimg = self.font.render(f"{self.score}", True, WHITE)
+        levelimg = self.font2.render(f"Level : {self.level}", True, WHITE)
+        self.win.blit(
+            scoreimg,
+            (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH // 4, hud_top + 10),
+        )
+        self.win.blit(
+            levelimg,
+            (
+                WIDTH // 2 - levelimg.get_width() // 2 + WIDTH // 4,
+                hud_top + HUD_HEIGHT - levelimg.get_height() - 10,
+            ),
+        )
+
+        pygame.draw.rect(self.win, BLUE, (0, 0, WIDTH, hud_top), 2)
+        self.clock.tick(fps)
+        pygame.display.update()
 
 def main():
-    pygame.init()
-    win = pygame.display.set_mode(SCREEN, pygame.NOFRAME)
-    clock = pygame.time.Clock()
+    # pygame.init()
+    # win = pygame.display.set_mode(SCREEN, pygame.NOFRAME)
+    # clock = pygame.time.Clock()
 
-    # Images
-    img1 = pygame.image.load("Assets/1.png")
-    img2 = pygame.image.load("Assets/2.png")
-    img3 = pygame.image.load("Assets/3.png")
-    img4 = pygame.image.load("Assets/4.png")
+    # # Images
+    # img1 = pygame.image.load("Assets/1.png")
+    # img2 = pygame.image.load("Assets/2.png")
+    # img3 = pygame.image.load("Assets/3.png")
+    # img4 = pygame.image.load("Assets/4.png")
 
-    Assets = {1: img1, 2: img2, 3: img3, 4: img4}
+    # Assets = {1: img1, 2: img2, 3: img3, 4: img4}
 
-    # Fonts
-    font = pygame.font.Font("Fonts/Alternity-8w7J.ttf", 50)
-    font2 = pygame.font.SysFont("cursive", 25)
+    # # Fonts
+    # font = pygame.font.Font("Fonts/Alternity-8w7J.ttf", 50)
+    # font2 = pygame.font.SysFont("cursive", 25)
 
     counter = 0
     move_down = False
     can_move = True
 
     tetris = Tetris(ROWS, COLS)
+    tetris.init_render()
 
     running = True
     while running:
-        win.fill(BLACK)
-
         counter += 1
         if counter >= 10000:
             counter = 0
@@ -288,93 +386,7 @@ def main():
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_DOWN:
                     move_down = False
-
-        # tetris.draw_grid()
-        for x in range(ROWS):
-            for y in range(COLS):
-                if tetris.board[x][y] > 0:
-                    val = tetris.board[x][y]
-                    img = Assets[val]
-                    win.blit(img, (y * CELLSIZE, x * CELLSIZE))
-                    pygame.draw.rect(
-                        win, WHITE, (y * CELLSIZE, x * CELLSIZE, CELLSIZE, CELLSIZE), 1
-                    )
-
-        if tetris.figure:
-            for i in range(4):
-                for j in range(4):
-                    if i * 4 + j in tetris.figure.image():
-                        img = Assets[tetris.figure.color]
-                        x = CELLSIZE * (tetris.figure.x + j)
-                        y = CELLSIZE * (tetris.figure.y + i)
-                        win.blit(img, (x, y))
-                        pygame.draw.rect(win, WHITE, (x, y, CELLSIZE, CELLSIZE), 1)
-
-        ghost_cells = tetris.project_landing()
-        for row, col in ghost_cells:
-            ghost_rect = pygame.Rect(col * CELLSIZE, row * CELLSIZE, CELLSIZE, CELLSIZE)
-            pygame.draw.rect(win, WHITE, ghost_rect, 1)
-
-        # GAMEOVER ***************************************************************
-
-        if tetris.gameover:
-            rect = pygame.Rect((50, 140, WIDTH - 100, HEIGHT - 350))
-            pygame.draw.rect(win, BLACK, rect)
-            pygame.draw.rect(win, RED, rect, 2)
-
-            over = font2.render("Game Over", True, WHITE)
-            msg1 = font2.render("Press r to restart", True, RED)
-            msg2 = font2.render("Press q to quit", True, RED)
-
-            win.blit(over, (rect.centerx - over.get_width() / 2, rect.y + 20))
-            win.blit(msg1, (rect.centerx - msg1.get_width() / 2, rect.y + 80))
-            win.blit(msg2, (rect.centerx - msg2.get_width() / 2, rect.y + 110))
-
-        # HUD ********************************************************************
-
-        hud_top = HEIGHT - HUD_HEIGHT
-        pygame.draw.rect(win, BLUE, (0, hud_top, WIDTH, HUD_HEIGHT))
-        preview_margin_x = CELLSIZE
-        next_origin_y = hud_top + 10
-        hold_origin_y = next_origin_y + 4 * CELLSIZE + 20
-
-        if tetris.next:
-            next_image = tetris.next.image()
-            img = Assets[tetris.next.color]
-            base_x = preview_margin_x
-            for idx in next_image:
-                row, col = divmod(idx, 4)
-                x = base_x + col * CELLSIZE
-                y = next_origin_y + row * CELLSIZE
-                win.blit(img, (x, y))
-
-        if tetris.hold:
-            hold_image = tetris.hold.image()
-            img = Assets[tetris.hold.color]
-            base_x = preview_margin_x
-            for idx in hold_image:
-                row, col = divmod(idx, 4)
-                x = base_x + col * CELLSIZE
-                y = hold_origin_y + row * CELLSIZE
-                win.blit(img, (x, y))
-
-        scoreimg = font.render(f"{tetris.score}", True, WHITE)
-        levelimg = font2.render(f"Level : {tetris.level}", True, WHITE)
-        win.blit(
-            scoreimg,
-            (WIDTH // 2 - scoreimg.get_width() // 2 + WIDTH // 4, hud_top + 10),
-        )
-        win.blit(
-            levelimg,
-            (
-                WIDTH // 2 - levelimg.get_width() // 2 + WIDTH // 4,
-                hud_top + HUD_HEIGHT - levelimg.get_height() - 10,
-            ),
-        )
-
-        pygame.draw.rect(win, BLUE, (0, 0, WIDTH, hud_top), 2)
-        clock.tick(FPS)
-        pygame.display.update()
+        tetris.render()
     pygame.quit()
 
 
