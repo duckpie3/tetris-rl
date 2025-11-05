@@ -23,8 +23,7 @@ RED = (252, 91, 122)
 WHITE = (255, 255, 255)
 
 
-# OBJECTS ********************************************************************
-
+localRandom = random.Random()
 
 class Tetramino:
     # matrix
@@ -48,9 +47,9 @@ class Tetramino:
     def __init__(self, x, y, rotation=0):
         self.x = x
         self.y = y
-        self.type = random.choice(self.TYPES)
+        self.type = localRandom.choice(self.TYPES)
         self.shape = self.FIGURES[self.type]
-        self.color = random.randint(1, 4)
+        self.color = localRandom.randint(1, 4)
         self.rotation = rotation
 
     def image(self):
@@ -73,7 +72,7 @@ class Tetris:
         self.gameover = False
         self.max_height = 0
         if seed is not None:
-            random.seed(seed)
+            localRandom.seed(seed)
         self.new_figure()
 
     def new_figure(self):
