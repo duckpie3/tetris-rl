@@ -38,7 +38,7 @@ class TetrisEnv(gym.Env):
         self.gamma = gamma
         self.beta = beta
         self.render_mode = render_mode
-        self.action_space = spaces.MultiDiscrete([2, COLS, 4])
+        self.action_space = spaces.Discrete(1 + COLS * 4)
         self.observation_space = spaces.Dict(
             spaces={
                 "piece_type": spaces.Box(
@@ -61,7 +61,7 @@ class TetrisEnv(gym.Env):
                 ),
                 "column_heights": spaces.Box(
                     low=np.zeros(COLS, dtype=np.float32),
-                    high=np.array([ROWS - 1] * COLS, dtype=np.float32),
+                    high=np.array([ROWS] * COLS, dtype=np.float32),
                     shape=(COLS,),
                     dtype=np.float32,
                 ),
@@ -111,19 +111,22 @@ class TetrisEnv(gym.Env):
         return obs, info
 
     def step(self, action):
+        action = int(action)
         phi = self._potential()
         score_before = self.tetris.score
 
         reward = 0.0
         reward += 0.01 # small living reward to encourage longer games
-        hold, x_pos, rotation = action
-        if hold == 1:
+        if action == 0:
             if self.tetris.allow_hold:
                 self.tetris.hold_piece()
                 reward -= 0.1  # small penalty for using hold
             else:
                 reward -= 1.0  # larger penalty for invalid hold
-        if hold == 0 or (hold == 1 and not self.tetris.allow_hold):
+        else:
+            idx = action - 1
+            x_pos = idx // 4
+            rotation = idx % 4
             self.tetris.go_side(x_pos - self.tetris.figure.x)
             for _ in range(rotation):
                 self.tetris.rotate()
