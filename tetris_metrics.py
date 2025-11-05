@@ -72,14 +72,7 @@ def clear_lines(board):
         new_board.insert(0, [0] * len(board[0]))
     return new_board, lines_cleared
 
-def eval_board(board, weights=None):
-    if weights is None:
-        weights = {
-            "aggregate_height": -0.510066,
-            "holes": -0.55663,
-            "bumpiness": -0.184483,
-            "wells": -0.100000,
-        }
+def eval_board(board, weights):
 
     aggregate_height = get_aggregate_height(board)
     holes = get_blocked_cells(board)
